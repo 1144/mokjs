@@ -1,7 +1,6 @@
 /*--
 	JavaScript模块化
-	支持 node 或 define(function(require, exports, module){}); 两种方式
-	-version 1.0.0
+	支持 CMD 和 CommonJS Modules 两种规范
 	-site http://mokjs.com/mok-js/
 */
 var FS = require('fs'),
@@ -30,8 +29,8 @@ function initCombine(isBase, useBase){
 	tree_deep = 0;
 	contents = '';
 }
-//合并文件：使用 define(function(require, exports, module){}); 方式
-function combineDefine(file){ //console.log(file);
+//合并文件：采用CMD规范
+function combineCMD(file){ //console.log(file);
 	combined_list[file] = true;
 	file_tree.push(util.repeat('|   ', tree_deep)+'|...'+file);
 	tree_deep++;
@@ -64,7 +63,7 @@ function combineDefine(file){ //console.log(file);
 					file_tree.push(util.repeat('|   ', tree_deep)+'|.  '+line);
 				}else{
 					FS.existsSync(prj_path+line) && FS.statSync(prj_path+
-						line).isFile() ? combineDefine(line) :
+						line).isFile() ? combineCMD(line) :
 						err_log.push('MOKJS-005: '+file+' 依赖的模块 '+
 							line.slice(0,-3)+' 不存在！\nline '+(i+1)+': '+lines[i]);
 				}
@@ -77,7 +76,7 @@ function combineDefine(file){ //console.log(file);
 	tree_deep--;
 }
 
-//合并文件：使用node定义模块的方式
+//合并文件：采用CommonJS Modules规范
 function combine(file){
 	combined_list[file] = true;
 	file_tree.push(util.repeat('|   ', tree_deep)+'|...'+file);
@@ -123,7 +122,7 @@ exports.output = function(filename, prj_conf, response){
 	var isBase = filename==='base.js';
 	prj_path = prj_conf.path; prj_path[prj_path.length-1]==='/' || (prj_path+='/');
 	filename = 'main/' + filename;
-	var file = prj_path + filename, node_mode = prj_conf.compile_mode==='node';
+	var file = prj_path + filename, cmd_spec = prj_conf.modular_spec === 'CMD';
 	response.writeHead(200, {'Content-Type':'application/x-javascript',
 		'Cache-Control':'max-age=0'});
 		
@@ -133,15 +132,15 @@ exports.output = function(filename, prj_conf, response){
 		//载入模块简称与全称的映射
 		util.loadModuleAbbr(prj_path);
 		initCombine(isBase, prj_conf.use_base);
-		node_mode ? combine(filename) : combineDefine(filename);
+		cmd_spec ? combineCMD(filename) : combine(filename);
 		if(err_log.length){
 			response.end('alert("'+err_log.join('\\n\\n'
 				).replace(/\n/g,'\\n').replace(/"/g,'\\"')+'");');
 			console.log(err_log.join('\n'));
 		}else{
 			response.write(file_tree.join('\r\n')+'\r\n*/\r\n');
-			response.write(FS.readFileSync(node_mode?'mok-js/br-mok-node.js':
-				'mok-js/br-mok-define.js', 'utf8'));
+			response.write(FS.readFileSync(cmd_spec?'mok-js/br-mok-CMD.js':
+				'mok-js/br-mok-Modules.js', 'utf8'));
 			response.end(contents+'\r\nrequire("'+filename.slice(0,-3)+'");\r\n');
 		}
 		isBase && prj_conf.use_base && (base_combined = combined_list);

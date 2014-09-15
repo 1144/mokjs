@@ -1,11 +1,17 @@
-//详细请参考：http://mokjs.com/
+/*
+	mokjs配置文件，详细请参考：http://mokjs.com/
+*/
+
+exports.http_port = 80; //服务器默认监听端口
+
+//项目配置
 var projects = {
 	'blog': {
 		//path是项目代码路径，相对于__config.js这个文件的路径，也可用绝对路径。
 		//有多个开发分支时，将路径指到对应分支就行（解决多分支切换开发）。
 		path: '../demos/blog/src-node/',
 		build_path: '../demos/blog/build/',
-		compile_mode: 'node',	//node: node模式；define: 'define(function(require, exports, module){});'模式
+		modular_spec: 'CMD1',	//遵循的模块化规范：'CMD' - CMD规范，'Modules' - CommonJS Modules规范
 		boot_js: 'abc.js',	//启动文件（种子文件）
 		use_base: true,	//是否使用了base.js（base.js是拆分出来的基本库文件或所有页面都用到的文件）
 		charset: 'utf8',	//gbk
@@ -65,6 +71,7 @@ var projects = {
 	}
 };
 
+//路由表
 var routes = {
 	'blog.cn': [
 		{
@@ -120,7 +127,7 @@ var routes = {
 			//累加最后的数字
 			regexp: /^\/(\d+)$/,
 			handler: function(match, request, response, reqpath){
-				require('./usr_modules/demo').count(match[1], response);
+				require('./mok_modules/demo').count(match[1], response);
 			}
 		}
 	],
@@ -141,8 +148,6 @@ var routes = {
 
 exports.projects = projects;
 exports.routes = routes;
-
-exports.http_port = 80; //mokjs服务器监听端口
 
 //Uglifyjs压缩
 exports.compress_cmd = 'uglifyjs {filename} -m -c unused=true -o {filename}';

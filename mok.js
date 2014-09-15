@@ -1,7 +1,7 @@
 /*--
 	mokjs - 前端模块化开发框架 - 模客JS
 	-author hahaboy | @攻城氏
-	-version 1.0.0
+	-version 1.1.0
 	-site http://mokjs.com/
 */
 var URL = require('url'),
@@ -51,12 +51,12 @@ require('http').createServer(function(request, response){
 		}else if(cmd==='d' || cmd==='doc'){ //生成文档
 			require('./mokdoc/main').main(argv, prj_conf, response);
 		}else{
-			var usrcmd = require('./usr_cmds')[cmd];
-			if(usrcmd){
-				usrcmd(argv, prj_conf, response);
+			var extcmd = require('./mok_modules/extendCmds')[cmd];
+			if(extcmd){
+				extcmd(argv, prj_conf, response);
 			}else{
 				response.end(global.HEAD_HTML.replace('{{title}}', '命令错误')+
-					'命令错误，<a href="http://mokjs.com/cmds.html" '+
+					'命令错误，<a href="http://mokjs.com/start.html" '+
 					'target="_blank">点击这里</a> 查看mokjs的所有内建命令。</body></html>');
 			}
 		}
@@ -116,9 +116,13 @@ function rewriteByHost(req_path, request, response){
 			return;
 		}
 	}
-	if(req_path==='/favicon.ico'){outputFile('./common/favicon.ico', '.ico', response);return}
-	response.writeHead(404, {'Content-Type':'text/plain'});
-	response.end('MOKJS-404: Not found. Wrong host['+request.headers.host+'] or path['+req_path+'].');
+	if(req_path==='/favicon.ico'){
+		outputFile('./common/favicon.ico', '.ico', response);
+	}else{
+		require('./mok_modules/proxy').request(request, response); //反向代理请求线上资源
+	}
+	//response.writeHead(404, {'Content-Type':'text/plain'});
+	//response.end('MOKJS-404: Not found. Wrong host['+request.headers.host+'] or path['+req_path+'].');
 }
 
 function outputFile(file, file_ext, response){

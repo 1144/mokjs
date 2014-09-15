@@ -8,7 +8,7 @@ exports.build = function(argv, prj_conf, response){
 	var boot_js = prj_conf.boot_js,
 		tag_num = argv.v,
 		lazy_mode = argv.hasOwnProperty('lazy'),
-		node_mode = prj_conf.compile_mode==='node',
+		cmd_spec = prj_conf.modular_spec === 'CMD',
 		lazy_list = prj_conf.lazy_list,
 		charset = prj_conf.charset || 'utf8',
 		comp_cmd = require('../__config').compress_cmd,
@@ -32,7 +32,7 @@ exports.build = function(argv, prj_conf, response){
 		zip = argv.hasOwnProperty('zip'),
 
 		err_log = [], //收集编译错误信息
-		br_mok = FS.readFileSync('mok-js/br-mok'+(node_mode?'-node.js':'-define.js'), 'utf8'),
+		br_mok = FS.readFileSync('mok-js/br-mok-'+(cmd_spec?'CMD.js':'Modules.js'), 'utf8'),
 		//块注释，要先移除块注释
 		reg_comment = /\/\*[\D\d]*?\*\//g,
 		reg_define = /^[\t ]*define[\t ]*\(.+$/m,
@@ -113,8 +113,8 @@ function readVersion(){
 		};
 	}
 }
-//分析依赖：使用 define(function(require, exports, module){}); 方式
-function parseRequireDefine(file){ //console.log(file);
+//分析依赖：采用CMD规范
+function parseCMDRequire(file){ //console.log(file);
 	var file_content = [];
 	file_content.push('\r\n/* ===== '+ file +' ===== */');
 
@@ -150,7 +150,7 @@ function parseRequireDefine(file){ //console.log(file);
 
 	all_files[file] = file_content.join('\r\n');
 }
-//分析依赖：使用node定义模块的方式
+//分析依赖：采用CommonJS Modules规范
 function parseRequire(file){
 	var file_content = [];
 	file_content.push('\r\n/* ===== '+ file +' ===== */\r\n'+
@@ -198,7 +198,7 @@ function readAllFiles(path){
 //解析require语法
 function parseReq(){
 	for(var i in all_files){
-		node_mode ? parseRequire(i) : parseRequireDefine(i);
+		cmd_spec ? parseCMDRequire(i) : parseRequire(i);
 	}
 }
 function calcDependList(file){

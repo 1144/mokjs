@@ -145,7 +145,7 @@ exports.build = function(argv, prj_conf, response){
 		abc_isnew = {}, //存放新增加的文件，以文件名为key，值为true
 		
 		zip = argv.hasOwnProperty('zip'),
-		tag_num = argv.v || '0',
+		version = argv.v || '',
 		start_time = Date.now();
 
 	FS.existsSync(build_path) || FS.mkdirSync(build_path);
@@ -157,24 +157,24 @@ exports.build = function(argv, prj_conf, response){
 
 	!function(){
 		if(prj_conf.format_tag){
-			var ret = prj_conf.format_tag(tag_num);
+			var ret = prj_conf.format_tag(version);
 			abc_newverstr = ret.version;
 			path_tag = path_updated + ret.folder_name + '/';
-		}else if(tag_num){
-			abc_newverstr = tag_num + '/';
-			path_tag = path_updated + tag_num + '/';
+		}else if(version){
+			abc_newverstr = version + '/';
+			path_tag = path_updated + version + '/';
 		}else{
-			tag_num = false;
+			version = false;
 			return; //没有版本
 		}
-		//tag_num表示不只有版本号，还有ver_js也存在
-		tag_num = !!ver_js && FS.existsSync(prj_path+ver_js);
+		//version表示不只有版本号，还有ver_js也存在
+		version = !!ver_js && FS.existsSync(prj_path+ver_js);
 		FS.existsSync(path_tag) ? FS.readdirSync(path_tag).forEach(function(file){
 			FS.unlinkSync(path_tag+file);
 		}) : FS.mkdirSync(path_tag);
 		
 		//解析当前版本号
-		if(tag_num){
+		if(version){
 			var vers = FS.readFileSync(prj_path+ver_js, 'utf8').split('<version>'),
 				len, vs, quot;
 			if(vers.length<2){return}
@@ -283,7 +283,7 @@ exports.build = function(argv, prj_conf, response){
 			FS.writeSync(fd, fc, 0, charset);
 			FS.closeSync(fd);
 
-			if(tag_num){
+			if(version){
 				//检查文件是否有修改
 				file_md5 = '|'+crypto.createHash('md5').update(FS.readFileSync(
 					path_min+main_file, charset)).digest('hex').slice(0, 8);
@@ -307,7 +307,7 @@ exports.build = function(argv, prj_conf, response){
 		return;
 	}
 	
-	tag_num && updateAbcFile();
+	version && updateAbcFile();
 	zip.finalize(function(err){
 		err && response.end('<br/>MOKTEXT-702: 生成zip压缩包失败！<br/>错误信息：'
 			+err.toString()+'</body></html>');
@@ -315,4 +315,5 @@ exports.build = function(argv, prj_conf, response){
 	response.write('<br /><br/>====== 合并压缩成功！');
 	response.write('<br />====== 总共用时：'+(Date.now()-start_time)/1000+' s.'+util.buildTime());
 	response.end('<br /><br/></body></html>');
+	typeof prj_conf.build_done==='function' && prj_conf.build_done(argv, path_tag, abc_newverstr);
 };
