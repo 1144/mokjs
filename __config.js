@@ -9,9 +9,9 @@ var projects = {
 	'blog': {
 		//path是项目代码路径，相对于__config.js这个文件的路径，也可用绝对路径。
 		//有多个开发分支时，将路径指到对应分支就行（解决多分支切换开发）。
-		path: '../demos/blog/src-node/',
+		path: '../demos/blog/src-define/',
 		build_path: '../demos/blog/build/',
-		modular_spec: 'CMD1',	//遵循的模块化规范：'CMD' - CMD规范，'Modules' - CommonJS Modules规范
+		modular_spec: 'CMD',	//遵循的模块化规范：'CMD' - CMD规范，'Modules' - CommonJS Modules规范
 		boot_js: 'abc.js',	//启动文件（种子文件）
 		use_base: true,	//是否使用了base.js（base.js是拆分出来的基本库文件或所有页面都用到的文件）
 		charset: 'utf8',	//gbk
