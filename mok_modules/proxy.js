@@ -30,8 +30,8 @@
 		});
 		req.on('error', function(err){
 			response.writeHeader(500, {'Content-Type':'text/plain'});
-			response.write('request url: ' + request.url);
-			response.end('\nMOKJS proxy error: ' + err);
+			response.write('Request URL: ' + request.url);
+			response.end('\nMOKJS Proxy Error: ' + err.message);
 		});
 		request.on('data', function(data){
 			req.write(data);
@@ -40,6 +40,7 @@
 		});
 	}
 
+	var host_cache = {}, exp_time = 0;
 	//请求非本机内容
 	//options 请求选项，包含host和port两个参数，并且可只写其中一个参数
 	exports.request = function(request, response, options){
@@ -48,13 +49,23 @@
 			doRequest(request, response, options.host, options.port);
 			return;
 		}
-		DNS.resolve4(request.headers.host, function(err, addresses){
+		var host = request.headers.host;
+		if(exp_time < Date.now()){
+			host_cache = {}; //清空缓存
+			exp_time = Date.now() + 900000; //host缓存15分钟（900000ms）
+			//console.log('cache exp..');
+		}
+		if(host_cache.hasOwnProperty(host)){
+			doRequest(request, response, host_cache[host], options.port);
+			return;
+		}
+		DNS.resolve4(host, function(err, addresses){ //console.log('resolve4: '+host);
 			if(err){
 				response.writeHeader(404, {'Content-Type':'text/plain'});
-				response.write('request url: ' + request.url);
-				response.end('\nMOKJS proxy error: ' + err);
+				response.write('Request URL: ' + request.url);
+				response.end('\nMOKJS Proxy Error: ' + err.message);
 			}else{
-				doRequest(request, response, addresses[0], options.port);
+				doRequest(request, response, host_cache[host] = addresses[0], options.port);
 			}
 		});
 	};

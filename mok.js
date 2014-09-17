@@ -9,19 +9,19 @@ var URL = require('url'),
 	FS = require('fs'),
 	MIME = require('./common/mime'),
 	CONF = require('./__config'),
-
 	mokjs = require('./mok-js/main'),
+	allRoutes = CONF.routes,
 	outputJs = mokjs.output,
 	testMin = {}; //项目是否处于测试压缩文件模式
 
 global.HEAD_HTML = FS.readFileSync('./common/head.html', 'utf8');
 
-require('http').createServer(function(request, response){
+function onRequest(request, response){
 	var req_path = URL.parse(request.url).pathname; //pathname不包括参数
 	if( req_path[1]==='-' ){ //req_path以/-开头
 		//编译命令、生成文档、查看模块等命令
 		response.writeHead(200, {'Content-Type':'text/html','Cache-Control':'max-age=0'});
-		var argv = cmdArgv(req_path.slice(2).split('-')),
+		var argv = parseArgv(req_path.slice(2).split('-')),
 			prj = argv._prj, prj_conf = CONF.projects[prj];
 		if(!prj||!prj_conf){
 			response.end(global.HEAD_HTML.replace('{{title}}', '无效的项目名')+
@@ -64,23 +64,17 @@ require('http').createServer(function(request, response){
 		//直接访问文件：js、html、css、img等
 		rewriteByHost(req_path, request, response);
 	}
-}).listen(CONF.http_port);
-process.on('uncaughtException', function(err){ //捕获漏网的异常
-	console.error('MOK ERROR: ' + err.stack);
-});
-
-console.log('mokjs is running at host 127.0.0.1:'+CONF.http_port+' ...');
+}
 
 function rewriteByHost(req_path, request, response){
 	//console.log(req_path);
-	var routes = CONF.routes[request.headers.host.split(':')[0]] || [], //去掉端口号哦
+	var routes = allRoutes[request.headers.host] || [],
 		i, len = routes.length,
 		match, route;
 	for(i = 0; i < len; i++){
 		route = routes[i];
 		match = req_path.match(route.regexp);
-		if(match){
-			//console.log(match);
+		if(match){ //console.log(match);
 			if(route.project){
 				var file = route.format ? route.format(match) : match[1] || match[0],
 					prj_conf = CONF.projects[route.project];
@@ -144,7 +138,7 @@ function outputFile(file, file_ext, response){
 }
 
 //解析命令参数
-function cmdArgv(args){
+function parseArgv(args){
 	var i = args.length, j, arg,
 		argv = {_prj:args[0], _cmd:(args[1]||'-').toLowerCase()};
 	while(i-- > 2){
@@ -158,3 +152,38 @@ function cmdArgv(args){
 	}
 	return argv;
 }
+
+process.on('uncaughtException', function(err){ //捕获漏网的异常
+	console.error('\nMOKJS Uncaught Exception: ' + err.stack);
+});
+
+//启动服务
+~function(routes, default_port){
+	var HTTP = require('http');
+	var rs = Object.keys(routes),
+		ports = [], x, listen = {};
+
+	rs.unshift(default_port);
+	for(var i = 0, l = rs.length; i < l; i++){
+		x = parseInt(rs[i].split(':')[1], 10); //不用考虑下标越界
+		if(x){
+			if(!listen.hasOwnProperty(x)){
+				listen[x] = true;
+				ports.push(x);
+				//！注意，端口被占用时，会抛出异常：Error: listen EADDRINUSE
+				HTTP.createServer(onRequest).listen(x);
+			}
+			if(x===80 && i){ //去掉80端口的端口号，因为80端口时request.headers.host没有':80'
+				x = rs[i];
+				routes[x.slice(0,-3)] = routes[x];
+				routes[x] = null;
+			}
+		}else if(default_port!==':80'){
+			x = rs[i];
+			routes[x+default_port] = routes[x];
+			routes[x] = null;
+		}
+	}
+	console.log('MOKJS is running at host 127.0.0.1, listening: '+ports.join(', ')+' ...');
+}(allRoutes, ':'+CONF.http_port);
+
