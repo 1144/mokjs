@@ -7,15 +7,14 @@
 	*/
 	var FS = require('fs'),
 		DNS = require('dns'),
-		HTTP = require('http'),
-		PORT = require('../__config').http_port;
+		HTTP = require('http');
 
 	function doRequest(request, response, host, port){
 		//console.log(request.url);
 		var options = {
 			headers: request.headers,
 			hostname: host,
-			port: port || PORT,
+			port: port || '80',
 			method: request.method,
 			path: request.url
 		};
@@ -42,21 +41,21 @@
 
 	var host_cache = {}, exp_time = 0;
 	//请求非本机内容
-	//options 请求选项，包含host和port两个参数，并且可只写其中一个参数
-	exports.request = function(request, response, options){
-		options || (options = {});
-		if(options.host){
-			doRequest(request, response, options.host, options.port);
+	//host_port 请求的域名和端口，例如 a.com:8080，10.58.101.31:80
+	exports.request = function(request, response, host_port){ //console.log(request.headers.host)
+		if(host_port){
+			host_port = host_port.split(':');
+			doRequest(request, response, host_port[0], host_port[1]);
 			return;
 		}
-		var host = request.headers.host;
+		var hp = request.headers.host.split(':'), host = hp[0];
 		if(exp_time < Date.now()){
 			host_cache = {}; //清空缓存
 			exp_time = Date.now() + 900000; //host缓存15分钟（900000ms）
 			//console.log('cache exp..');
 		}
 		if(host_cache.hasOwnProperty(host)){
-			doRequest(request, response, host_cache[host], options.port);
+			doRequest(request, response, host_cache[host], hp[1]);
 			return;
 		}
 		DNS.resolve4(host, function(err, addresses){ //console.log('resolve4: '+host);
@@ -65,7 +64,7 @@
 				response.write('Request URL: ' + request.url);
 				response.end('\nMOKJS Proxy Error: ' + err.message);
 			}else{
-				doRequest(request, response, host_cache[host] = addresses[0], options.port);
+				doRequest(request, response, host_cache[host] = addresses[0], hp[1]);
 			}
 		});
 	};
