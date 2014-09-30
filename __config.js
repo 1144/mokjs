@@ -2,7 +2,7 @@
 	mokjs配置文件，详细请参考：http://mokjs.com/
 */
 
-exports.http_port = 80; //服务器默认监听端口
+var http_port = 80; //服务器默认监听端口
 
 //项目配置
 var projects = {
@@ -146,6 +146,7 @@ var routes = {
 	]
 };
 
+exports.http_port = http_port;
 exports.projects = projects;
 exports.routes = routes;
 
