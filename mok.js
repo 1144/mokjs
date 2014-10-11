@@ -16,14 +16,15 @@ var URL = require('url'),
 
 global.HEAD_HTML = FS.readFileSync('./common/head.html', 'utf8');
 
-function onRequest(request, response){
+function onRequest(request, response, port){
 	var req_path = URL.parse(request.url).pathname; //pathname不包括参数
 	if(req_path[1]==='-'){
 		execCmd(req_path, request, response); //mokjs命令以/-开头
 		return;
 	}
-
-	var routes = allRoutes[request.headers.host] || [],
+	var host = request.headers.host;
+	port==='80' || host.indexOf(':')>0 || (host += ':' + port);
+	var routes = allRoutes[host] || [],
 		i, len = routes.length,
 		match, route;
 	for(i = 0; i < len; i++){
@@ -53,7 +54,7 @@ function onRequest(request, response){
 	if(req_path==='/favicon.ico'){
 		outputFile('./common/favicon.ico', '.ico', response);
 	}else{
-		require('./mok_modules/proxy').request(request, response); //反向代理请求线上资源
+		require('./mok_modules/mok_break_host').request(request, response); //突破host请求线上资源
 	}
 }
 
@@ -90,7 +91,7 @@ function execCmd(req_path, request, response){
 	}else if(cmd==='d' || cmd==='doc'){ //生成文档
 		require('./mokdoc/main').main(argv, prj_conf, response);
 	}else{
-		var extcmd = require('./mok_modules/extendCmds')[cmd];
+		var extcmd = require('./mok_modules/mok_extend_cmd')[cmd];
 		if(extcmd){
 			extcmd(argv, prj_conf, response);
 		}else{
@@ -147,15 +148,19 @@ process.on('uncaughtException', function(err){ //捕获漏网的异常
 
 	rs.unshift(default_port);
 	for(var i = 0, l = rs.length; i < l; i++){
-		x = parseInt(rs[i].split(':')[1], 10); //不用考虑下标越界
+		x = rs[i].split(':')[1]; //不用考虑下标越界
 		if(x){
 			if(!listen.hasOwnProperty(x)){
 				listen[x] = true;
 				ports.push(x);
-				//！注意，端口被占用时，会抛出异常：Error: listen EADDRINUSE
-				HTTP.createServer(onRequest).listen(x);
+				~function(port){
+					//！注意，端口被占用时，会抛出异常：Error: listen EADDRINUSE
+					HTTP.createServer(function(request, response){
+						onRequest(request, response, port);
+					}).listen(port);
+				}(x);
 			}
-			if(x===80 && i){ //去掉80端口的端口号，因为80端口时request.headers.host没有':80'
+			if(x==='80' && i){ //去掉80端口的端口号，因为80端口时request.headers.host没有':80'
 				x = rs[i];
 				routes[x.slice(0,-3)] = routes[x];
 				routes[x] = null;
@@ -166,5 +171,7 @@ process.on('uncaughtException', function(err){ //捕获漏网的异常
 			routes[x] = null;
 		}
 	}
-	console.log('MOKJS is running at host 127.0.0.1, listening: '+ports.join(', ')+' ...');
+	console.log('MOKJS is running at host 127.0.0.1, listening port(s): '+ports.join(', ')+'.');
 }(allRoutes, ':'+CONF.http_port);
+
+CONF.proxy_conf && require('./mok_modules/mok_proxy').main(CONF.proxy_conf);

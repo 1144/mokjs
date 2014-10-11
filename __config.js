@@ -160,3 +160,19 @@ exports.alias2tagid = {
 	'method': 'fn',
 	'version': 'ver'
 };
+
+exports.proxy_conf = {
+	'8086': {
+		'ecom.com': [
+			{
+				regexp: /b\.html/,
+				head: function(header, match){
+					return {
+						host: 'm.com',
+						path: '/start.html'
+					};
+				}
+			}
+		]
+	},
+};
