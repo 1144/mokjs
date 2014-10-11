@@ -161,7 +161,7 @@ exports.alias2tagid = {
 	'version': 'ver'
 };
 
-exports.proxy_conf = {
+/*exports.proxy_conf = {
 	'8086': {
 		'ecom.com': [
 			{
@@ -175,4 +175,4 @@ exports.proxy_conf = {
 			}
 		]
 	},
-};
+};*/

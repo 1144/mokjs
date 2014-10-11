@@ -1,7 +1,7 @@
 /*--
 	mokjs - 前端模块化开发框架 - 模客JS
 	-author hahaboy | @攻城氏
-	-version 1.1.0
+	-version 1.2.0
 	-site http://mokjs.com/
 */
 var URL = require('url'),
