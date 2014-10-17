@@ -5,7 +5,7 @@
 
 var n = 0;
 
-//处理url符合某种格式的http请求
+//处理url符合某种格式的http请求，在routes配置里调用
 //累加指定的数字
 exports.count = function(num, response){
 	response.writeHead(200, {'Content-Type':'text/plain','Cache-Control':'max-age=0'});
@@ -13,7 +13,7 @@ exports.count = function(num, response){
 	response.end(String(n));
 };
 
-//用命令调用模块
+//用命令调用模块，在扩展命令里调用
 //实现打印项目配置
 exports.printPrjConfig = function(argv, prj_conf, response){
 	response.write(global.HEAD_HTML.replace('{{title}}', '我是模块demo'));
