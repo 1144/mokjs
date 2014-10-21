@@ -37,10 +37,14 @@ function onRequest(request, response, port){
 				file[0]==='/' && (file = file.slice(1));
 				if(prj_conf.type){ //css or html project
 					require(prj_conf.type==='css'?'./moktext/css':'./moktext/html').output(file, prj_conf, response);
-				}else if(file===prj_conf.boot_js || testMin[route.project]){
+				}else if(testMin[route.project]){
 					var build_path = prj_conf.build_path;
 					build_path[build_path.length-1]==='/' || (build_path+='/');
 					outputFile(build_path+'min/'+file, '.js', response);
+				}else if(file===prj_conf.boot_js){
+					var src_path = prj_conf.path;
+					src_path[src_path.length-1]==='/' || (src_path+='/');
+					outputFile(src_path+file, '.js', response);
 				}else{
 					outputJs(file, prj_conf, response);
 				}
