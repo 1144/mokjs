@@ -55,7 +55,8 @@ function initCombine(){
 function combine(file, data, prefile){ //console.log(file);
 	prefile && (file = util.resolveHCPath(prefile, file));
 	if(!FS.existsSync(prj_path+file) || !FS.statSync(prj_path+file).isFile()){
-		err_log.push('MOKTEXT-005: '+prefile+' 引用的文件 '+file+' 不存在！');
+		err_log.push('MOKTEXT-005: '+(prefile?prefile+' 引用的文件 ':'文件 ')+
+			file+' 不存在！');
 		return;
 	}
 	if(combining[file]){return} //处理循环依赖
@@ -192,8 +193,8 @@ exports.build = function(argv, prj_conf, response){
 			'构建HTML文件')+'<script>'+FS.readFileSync('mok-js/br-build.js','utf8')+'</script>');
 
 	FS.existsSync(path_all) || FS.mkdirSync(path_all); //不能清空文件夹
-
-	var list = require(prj_path + 'build-list').list;
+	
+	var list = require(require('path').resolve(prj_path+'build-list')).list;
 	var main_files = [], main_len, k,
 		main_file, fc, fd, file_md5; //console.log(main_files)
 	response.write(''); //让控制台输出一个空行
