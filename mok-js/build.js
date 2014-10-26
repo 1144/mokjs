@@ -122,7 +122,7 @@ function parseCMDRequire(file){ //console.log(file);
 			return mark.replace(/define[\t ]*\(/, ';(mok["'+
 				util.getModuleAbbr(file.slice(0,-3))+'"]=');
 		}).split('\n'),
-		i = 0, len = lines.length, line, req_ms, r,
+		i = 0, len = lines.length, line, req_ms,
 		depend_ms = [];
 	for(; i < len; i++){
 		line = lines[i];
@@ -130,20 +130,14 @@ function parseCMDRequire(file){ //console.log(file);
 			file_content.push(line);
 		}else{
 			req_ms = util.parseRequire(line, file);
-			r = req_ms[0];
+			file_content.push(req_ms[0]);
 			req_ms = req_ms[1]; //复用req_ms
 			while(req_ms.length){
-				line = req_ms.shift(); //复用line
-				if(line.slice(-3)==='.js'){
-					r = '//MOKJS ' + r;
-				}else{
-					line += '.js'; 
-				}
+				line = req_ms.shift() + '.js'; //复用line
 				depend_ms.push(line);
 				all_files[line] || err_log.push('MOKJS-005: '+file+' 依赖的模块 '+
 					line.slice(0,-3)+' 不存在！<br/>line '+(i+1)+': '+lines[i]);
 			}
-			file_content.push(r);
 		}
 	}
 	depend_ms.length && (file_req[file] = depend_ms);

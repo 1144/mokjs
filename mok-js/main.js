@@ -43,22 +43,17 @@ function combineCMD(file){ //console.log(file);
 			return mark.replace(/define[\t ]*\(/, ';(mok["'+
 				util.getModuleAbbr(file.slice(0,-3))+'"]=');
 		}).split('\n'),
-		i = 0, len = lines.length, line, req_ms, r;
+		i = 0, len = lines.length, line, req_ms;
 	for(; i < len; i++){
 		line = lines[i];
 		if(line.indexOf('require')<0){ //90%以上无require吧
 			file_content.push(line);
 		}else{
 			req_ms = util.parseRequire(line, file);
-			r = req_ms[0];
+			file_content.push(req_ms[0]);
 			req_ms = req_ms[1]; //复用req_ms
 			while(req_ms.length){
-				line = req_ms.shift(); //复用line
-				if(line.slice(-3)==='.js'){
-					r = '//MOKJS ' + r;
-				}else{
-					line += '.js'; 
-				}
+				line = req_ms.shift() + '.js'; //复用line
 				if(combined_list[line]){
 					file_tree.push(util.repeat('|   ', tree_deep)+'|.  '+line);
 				}else{
@@ -68,7 +63,7 @@ function combineCMD(file){ //console.log(file);
 							line.slice(0,-3)+' 不存在！\nline '+(i+1)+': '+lines[i]);
 				}
 			}
-			file_content.push(r);
+			
 		}
 	}
 	contents += file_content.join('\r\n');
@@ -134,7 +129,7 @@ exports.output = function(filename, prj_conf, response){
 		initCombine(isBase, prj_conf.use_base);
 		cmd_spec ? combineCMD(filename) : combine(filename);
 		if(err_log.length){
-			response.end('alert("'+err_log.join('\\n\\n'
+			response.end('!alert("'+err_log.join('\\n\\n'
 				).replace(/\n/g,'\\n').replace(/"/g,'\\"')+'");');
 			console.log(err_log.join('\n'));
 		}else{
@@ -146,6 +141,6 @@ exports.output = function(filename, prj_conf, response){
 		isBase && prj_conf.use_base && (base_combined = combined_list);
 		err_log = contents = combined_list = null;
 	}else{
-		response.end('alert("MOKJS-404: Not found. Wrong path ['+file+'].");');
+		response.end('!alert("MOKJS-404: Not found. Wrong path ['+file+'].");');
 	}
 };
