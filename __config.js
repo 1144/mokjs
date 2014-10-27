@@ -150,8 +150,8 @@ exports.http_port = http_port;
 exports.projects = projects;
 exports.routes = routes;
 
-//Uglifyjs压缩
-exports.compress_cmd = 'uglifyjs {filename} -m -c unused=true -o {filename}';
+//uglifyjs压缩，如果已全局安装了uglifyjs，则压缩命令为 'uglifyjs {filename} -m -c unused=true -o {filename}'
+exports.compress_cmd = 'node node_modules/uglify-js/bin/uglifyjs {filename} -m -c unused=true -o {filename}';
 //YUI压缩
 //exports.compress_cmd = 'java -jar ./mokjs/yuicompressor-2.4.2.jar {filename} -o {filename}';
 
