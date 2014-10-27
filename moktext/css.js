@@ -34,7 +34,7 @@ function combine(file){ //console.log(file);
 	contents.push('/* ===== '+ file +' ===== */\r\n');
 
 	var lines = FS.readFileSync(prj_path+file, charset).replace(reg_comment,
-		'').replace(/\r/g,'').split('\n'),
+		'').replace(/^\s+/g,'').replace(/\r/g,'').split('\n'), //要去掉BOM头
 		i = 0, len = lines.length, line, import_file;
 	for(; i < len; i++){
 		line = lines[i];
@@ -133,15 +133,15 @@ exports.build = function(argv, prj_conf, response){
 		reg_dou_s = /, /g, //.Korea, .Banner, .Letv-tui{margin:10px
 		reg_s_kuo = / \{/g, //.Letv-tui {margin:10px
 
-		ver_js = prj_conf.ver_js,
+		version_file = prj_conf.version_file,
 		path_main = build_path+'main/',
 		path_min = build_path+'min/',
 		path_updated = build_path+'updated/',
 		path_tag, //待上线的tag版本，放在updated文件夹下
 
-		abc_newverstr, abc_a, abc_c, //abc指代版本文件ver_js的相关名称
+		abc_newverstr, abc_a, abc_c, //abc指代版本文件version_file的相关名称
 		abc_name2ver = {}, //存放所有的文件名及对应的版本号
-		abc_allname = [], //存放所有的文件名，用于输出ver_js时排序所有文件
+		abc_allname = [], //存放所有的文件名，用于输出version_file时排序所有文件
 		abc_isnew = {}, //存放新增加的文件，以文件名为key，值为true
 		
 		zip = argv.hasOwnProperty('zip'),
@@ -167,15 +167,15 @@ exports.build = function(argv, prj_conf, response){
 			version = false;
 			return; //没有版本
 		}
-		//version表示不只有版本号，还有ver_js也存在
-		version = !!ver_js && FS.existsSync(prj_path+ver_js);
+		//version表示不只有版本号，还有version_file也存在
+		version = !!version_file && FS.existsSync(prj_path+version_file);
 		FS.existsSync(path_tag) ? FS.readdirSync(path_tag).forEach(function(file){
 			FS.unlinkSync(path_tag+file);
 		}) : FS.mkdirSync(path_tag);
 		
 		//解析当前版本号
 		if(version){
-			var vers = FS.readFileSync(prj_path+ver_js, 'utf8').split('<version>'),
+			var vers = FS.readFileSync(prj_path+version_file, 'utf8').split('<version>'),
 				len, vs, quot;
 			if(vers.length<2){return}
 			abc_a = vers[0];
@@ -240,12 +240,12 @@ exports.build = function(argv, prj_conf, response){
 		}
 		content = abc_a+content+'\r\n/* </version>'+abc_c;
 
-		//复制ver_js文件到打包项目的目录下，命名为update-ver_js，提交SVN时先删除已有的ver_js，
-		//再把updated-ver_js重命名为ver_js，即实现更新ver_js
-		fd = FS.openSync(prj_path+'updated-'+ver_js, 'w', '0666');
+		//复制version_file文件到打包项目的目录下，命名为update-version_file，
+		//提交SVN时先删除已有的version_file，
+		//再把updated-version_file重命名为version_file，即实现更新version_file
+		fd = FS.openSync(prj_path+'updated-'+version_file, 'w', '0666');
 		FS.writeSync(fd, content, 0, 'utf8');
 		FS.closeSync(fd);
-		//zip.append(content, {name:ver_js});
 		k && response.write('<br /><br/>MOKTEXT-051: 请注意有main文件被删除了：'+k+' 等。');
 	};
 

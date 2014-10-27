@@ -182,7 +182,7 @@ function readAllFiles(path){
 		if(FS.statSync(file).isFile()){
 			if(filename.slice(-3)==='.js'){
 				all_files[file.slice(prj_path_len)] = FS.readFileSync(file, 
-					charset).replace(reg_comment, '').replace(/\r/g, '');
+					charset).replace(/^\s+/g,'').replace(reg_comment, '').replace(/\r/g, '');
 			}
 		}else if(filename[0]!=='.'){ //排除.svn，.github之类的文件夹
 			readAllFiles(file);

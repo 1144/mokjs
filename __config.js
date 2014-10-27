@@ -32,7 +32,7 @@ var projects = {
 		type: 'css',	//项目类型
 		path: '../demos/css/',	 //也可以使用绝对路径
 		build_path: '../demos/css-build/',	//构建路径，合并压缩后的css存放的地方
-		ver_js: 'version.js',	 //存放版本和MD5信息的文件，可选
+		version_file: 'version.txt',	//版本文件，存放版本和MD5信息
 		charset: 'utf8',	//gbk。css源文件编码
 		//格式化上线tag号，可选
 		format_tag: function(tag_num){
@@ -150,8 +150,10 @@ exports.http_port = http_port;
 exports.projects = projects;
 exports.routes = routes;
 
-//Uglifyjs压缩
-exports.compress_cmd = 'uglifyjs {filename} -m -c unused=true -o {filename}';
+//如果uglifyjs不是全局安装，需要使用下面这个压缩命令
+exports.compress_cmd = 'node node_modules/uglify-js/bin/uglifyjs {filename} -m -c unused=true -o {filename}';
+//uglifyjs压缩
+//exports.compress_cmd = 'uglifyjs {filename} -m -c unused=true -o {filename}';
 //YUI压缩
 //exports.compress_cmd = 'java -jar ./mokjs/yuicompressor-2.4.2.jar {filename} -o {filename}';
 

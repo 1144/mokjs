@@ -39,7 +39,7 @@ function combineCMD(file){ //console.log(file);
 	file_content.push('\r\n/* ===== '+ file +' ===== */');
 
 	var lines = FS.readFileSync(prj_path+file, charset).replace(reg_comment,
-		'').replace(/\r/g,'').replace(reg_define, function(mark){
+		'').replace(/^\s+/g,'').replace(/\r/g,'').replace(reg_define, function(mark){
 			return mark.replace(/define[\t ]*\(/, ';(mok["'+
 				util.getModuleAbbr(file.slice(0,-3))+'"]=');
 		}).split('\n'),
@@ -83,7 +83,7 @@ function combine(file){
 		'"]=function(require, module, exports){');
 
 	var lines = FS.readFileSync(prj_path+file, charset).replace(reg_comment,
-		'').replace(/\r/g,'').split('\n'),
+		'').replace(/^\s+/g,'').replace(/\r/g,'').split('\n'),
 		i = 0, len = lines.length, line, req_ms;
 	for(; i < len; i++){
 		line = lines[i];
