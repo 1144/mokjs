@@ -133,18 +133,18 @@ exports.build = function(argv, prj_conf, response){
 		reg_dou_s = /, /g, //.Korea, .Banner, .Letv-tui{margin:10px
 		reg_s_kuo = / \{/g, //.Letv-tui {margin:10px
 
-		version_file = prj_conf.version_file,
 		path_main = build_path+'main/',
 		path_min = build_path+'min/',
 		path_updated = build_path+'updated/',
 		path_tag, //待上线的tag版本，放在updated文件夹下
 
-		abc_newverstr, abc_a, abc_c, //abc指代版本文件version_file的相关名称
+		abc_newverstr, abc_a = '', abc_c = '', //abc指代版本文件version_file的相关名称
 		abc_name2ver = {}, //存放所有的文件名及对应的版本号
 		abc_allname = [], //存放所有的文件名，用于输出version_file时排序所有文件
 		abc_isnew = {}, //存放新增加的文件，以文件名为key，值为true
 		
 		zip = argv.hasOwnProperty('zip'),
+		version_file = prj_conf.version_file,
 		version = argv.v || '',
 		start_time = Date.now();
 
@@ -163,18 +163,19 @@ exports.build = function(argv, prj_conf, response){
 		}else if(version){
 			abc_newverstr = version + '/';
 			path_tag = path_updated + version + '/';
-		}else{
-			version = false;
-			return; //没有版本
+		}else{	//没有版本
+			version_file = path_tag = false;
+			return;
 		}
-		//version表示不只有版本号，还有version_file也存在
-		version = !!version_file && FS.existsSync(prj_path+version_file);
 		FS.existsSync(path_tag) ? FS.readdirSync(path_tag).forEach(function(file){
 			FS.unlinkSync(path_tag+file);
 		}) : FS.mkdirSync(path_tag);
 		
+		if(version_file){	//判断版本文件是否真的存在
+			FS.existsSync(prj_path+version_file) || (version_file = false);
+		}
 		//解析当前版本号
-		if(version){
+		if(version_file){
 			var vers = FS.readFileSync(prj_path+version_file, 'utf8').split('<version>'),
 				len, vs, quot;
 			if(vers.length<2){return}
@@ -199,8 +200,8 @@ exports.build = function(argv, prj_conf, response){
 			//生成压缩文档
 			zip = zip('zip');
 			zip.on('error', function(err){
-				response.end('<br/>MOKTEXT-701: 生成zip压缩包的过程中出现异常！<br/>错误信息：'
-					+err.toString()+'</body></html>');
+				err_log.push('<br/>MOKTEXT-701: 生成zip压缩包的过程中出现异常！<br/>错误信息：'+
+					err.toString());
 			});
 			zip.pipe( FS.createWriteStream(path_tag.slice(0,-1)+'.zip') );
 		}else{
@@ -211,7 +212,7 @@ exports.build = function(argv, prj_conf, response){
 			};
 		}
 	}();
-	//更新版本文件
+	//更新版本控制文件
 	var updateAbcFile = function(){
 		var content = '<version> */', fd, k;
 		abc_allname.sort().forEach(function(name){
@@ -261,6 +262,7 @@ exports.build = function(argv, prj_conf, response){
 			abc_allname.push(main_file);
 			initCombine();
 			combine('main/'+main_file);
+			if(err_log.length){break}
 			fc = file_tree.join('\r\n') + '\r\n*/\r\n' + contents.join('');
 			
 			//没压缩的文件写到all下
@@ -283,7 +285,7 @@ exports.build = function(argv, prj_conf, response){
 			FS.writeSync(fd, fc, 0, charset);
 			FS.closeSync(fd);
 
-			if(version){
+			if(version_file){
 				//检查文件是否有修改
 				file_md5 = '|'+crypto.createHash('md5').update(FS.readFileSync(
 					path_min+main_file, charset)).digest('hex').slice(0, 8);
@@ -293,10 +295,21 @@ exports.build = function(argv, prj_conf, response){
 					abc_name2ver[main_file] || (abc_isnew[main_file] = true);
 					abc_name2ver[main_file] = abc_newverstr + file_md5;
 				}
+			}else if(path_tag){
+				fd = FS.openSync(path_tag+main_file, 'w', '0666');
+				FS.writeSync(fd, fc, 0, charset);
+				FS.closeSync(fd);
+				zip.append(fc, {name:main_file});
 			}
 		}
 	}
 	contents = combined_list = null;
+	
+	version_file && err_log.length===0 && updateAbcFile();
+	zip.finalize(function(err){
+		err && err_log.push('<br/>MOKTEXT-702: 生成zip压缩包失败！<br/>错误信息：'+
+			err.toString());
+	});
 	if(err_log.length){
 		response.write('<br />'); //来个换行
 		for(var ei = 0; ei < err_log.length; ei++){
@@ -306,12 +319,6 @@ exports.build = function(argv, prj_conf, response){
 		err_log = null;
 		return;
 	}
-	
-	version && updateAbcFile();
-	zip.finalize(function(err){
-		err && response.end('<br/>MOKTEXT-702: 生成zip压缩包失败！<br/>错误信息：'
-			+err.toString()+'</body></html>');
-	});
 	response.write('<br /><br/>====== 合并压缩成功！');
 	response.write('<br />====== 总共用时：'+(Date.now()-start_time)/1000+' s.'+util.buildTime());
 	response.end('<br /><br/></body></html>');

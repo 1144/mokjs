@@ -18,21 +18,23 @@ var projects = {
 		//格式化上线tag号。参数tag_num为打包时输入的版本号或某种格式的字符串。
 		format_tag: function(tag_num){
 			var t = new Date(), M = t.getMonth()+1, d = t.getDate();
+			if(!tag_num){
+				var h = t.getHours(), m = t.getMinutes();
+				h<10 && (h = '0'+h);
+				m<10 && (m = '0'+m);
+				tag_num = String(h)+String(m);
+			}
 			return {
 				version: '' + t.getFullYear() + (M>9 ? M : '0'+M) +'/'+ (d>9 ? d : '0'+d) + '/js_' + tag_num + '/',
 				folder_name: 'js_' + tag_num	//存放所有更新的文件的文件夹名，在updated目录下。前后都别加反斜线“/”。
 			};
-		},
-		//惰性压缩列表
-		lazy_list: {
-			//'test.js': true
 		}
 	},
 	'mycss': {
 		type: 'css',	//项目类型
 		path: '../demos/css/',	 //也可以使用绝对路径
 		build_path: '../demos/css-build/',	//构建路径，合并压缩后的css存放的地方
-		version_file: 'version.txt',	//版本文件，存放版本和MD5信息
+		version_file: 'version.txt',	//版本文件，存放版本和MD5信息，可选
 		charset: 'utf8',	//gbk。css源文件编码
 		//格式化上线tag号，可选
 		format_tag: function(tag_num){
@@ -163,6 +165,7 @@ exports.alias2tagid = {
 };
 
 /*exports.proxy_conf = {
+	//配置代理服务器要监听的端口8086
 	'8086': {
 		'ecom.com': [
 			{
