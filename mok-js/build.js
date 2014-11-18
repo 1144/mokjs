@@ -10,6 +10,7 @@ exports.build = function(argv, prj_conf, response){
 		lazy_mode = argv.hasOwnProperty('lazy'),
 		cmd_spec = prj_conf.modular_spec === 'CMD',
 		lazy_list = prj_conf.lazy_list,
+		build_data = prj_conf.build_data || {},
 		charset = prj_conf.charset || 'utf8',
 		comp_cmd = require('../__config').compress_cmd,
 		util = require('../common/util'),
@@ -34,6 +35,7 @@ exports.build = function(argv, prj_conf, response){
 		err_log = [], //收集编译错误信息
 		br_mok = FS.readFileSync('mok-js/br-mok-'+(cmd_spec?'CMD.js':'Modules.js'), 'utf8'),
 		//块注释，要先移除块注释
+		reg_data_key = /\/\*{{([\D\d]+?)}}\*\//g,
 		reg_comment = /\/\*[\D\d]*?\*\//g,
 		reg_define = /^[\t ]*define[\t ]*\(.+$/m,
 		file_req = {}, //文件名作为key，值是该文件依赖的模块数组
@@ -186,7 +188,10 @@ exports.build = function(argv, prj_conf, response){
 			if(FS.statSync(file).isFile()){
 				if(filename.slice(-3)==='.js'){
 					all_files[file.slice(prj_path_len)] = FS.readFileSync(file, 
-						charset).replace(/^\s+/g,'').replace(reg_comment,'').replace(/\r/g,'');
+						charset).replace(reg_data_key, function(input, $1){
+							$1 = $1.trim();
+							return build_data[$1] || (/^[\$\w]*$/.test($1) ? '' : $1);
+						}).replace(reg_comment,'').replace(/^\s+/,'').replace(/\r/g,'');
 				}
 			}else if(filename[0]!=='.'){ //排除.svn，.github之类的文件夹
 				readAllFiles(file);

@@ -28,6 +28,12 @@ var projects = {
 				version: '' + t.getFullYear() + (M>9 ? M : '0'+M) +'/'+ (d>9 ? d : '0'+d) + '/js_' + tag_num + '/',
 				folder_name: 'js_' + tag_num	//存放所有更新的文件的文件夹名，在updated目录下。前后都别加反斜线“/”。
 			};
+		},
+		build_data: {
+			drop_line: '//',	//用于打包时丢弃某一行代码
+			drop_start: '/*',	//用于打包时丢弃某一段代码
+			drop_end: '*/',	//用于打包时丢弃某一段代码
+			debug: 'var debug = false;'
 		}
 	},
 	'mycss': {
@@ -152,11 +158,8 @@ exports.http_port = http_port;
 exports.projects = projects;
 exports.routes = routes;
 
-//uglifyjs压缩，如果已全局安装了uglifyjs，则压缩命令为 'uglifyjs {filename} -m -c unused=true -o {filename}'
-exports.compress_cmd = 'node node_modules/uglify-js/bin/uglifyjs {filename} -m -c unused=true -o {filename}';
-
-//YUI压缩
-//exports.compress_cmd = 'java -jar ./mokjs/yuicompressor-2.4.2.jar {filename} -o {filename}';
+//js文件压缩命令，使用uglifyjs压缩
+exports.compress_cmd = 'uglifyjs {filename} -m -c unused=true -o {filename}';
 
 //mokdoc标签别名配置：tag的别名与tag id的映射
 exports.alias2tagid = {
@@ -165,7 +168,7 @@ exports.alias2tagid = {
 };
 
 /*exports.proxy_conf = {
-	//配置代理服务器要监听的端口8086
+	//代理模块要监听的端口8086
 	'8086': {
 		'ecom.com': [
 			{

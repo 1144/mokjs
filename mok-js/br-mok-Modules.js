@@ -1,4 +1,4 @@
-/* MOK-JS v1.1.0 */
+/* MOK-JS MOKJS.COM */
 if(!this.mok){
 	var mok = {}, require = function(){
 		var m = mok, done = {};

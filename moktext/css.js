@@ -1,14 +1,17 @@
 /*--
 	CSS模块化
-	-version 1.0.0
 	-site http://mokjs.com/moktext/
 */
 var FS = require('fs'),
 	crypto = require('crypto'),
 	util = require('../common/util'),
+	reg_data_key = /\/\*{{(\w+)}}\*\//g,
 	reg_comment = /\/\*[\D\d]*?\*\//g, //注释，例如：/* CSS Document */
 	reg_mark = /^[\t ]*@import.*?\([\t ]*['"](.+?)['"]/, //@import url('../modules/title.css');
 	charset, //文件编码，默认utf8
+	glb_data,
+	sass_config,
+	sass,
 	test_min = {},
 	err_log = [],
 	prj_path,
@@ -18,6 +21,27 @@ var FS = require('fs'),
 	tree_deep,
 	contents;
 
+//编译sass文件
+function compileSassFile(file_content, file){
+	sass_config.data = file_content;
+	try{
+		sass || (sass = require('node-sass'));
+		return sass.renderSync(sass_config);
+	}catch(err){
+		err_log.push('MOKTEXT-006: 编译sass文件 '+file+' 出错：'+err.toString());
+		return '';
+	}
+}
+//初始化项目
+function initProject(prj_conf){
+	prj_path = prj_conf.path;
+	prj_path[prj_path.length-1]==='/' || (prj_path+='/');
+	charset = prj_conf.charset || 'utf8';
+	glb_data = prj_conf.data || {};
+	sass_config = glb_data.sass_config || {};
+	sass_config.includePaths = [prj_path];
+	err_log = [];
+}
 //初始化合并
 function initCombine(){
 	file_tree = ['@charset "'+(charset[0].toLowerCase()==='u'?'utf-8':charset)+
@@ -33,8 +57,14 @@ function combine(file){ //console.log(file);
 	tree_deep++;
 	contents.push('/* ===== '+ file +' ===== */\r\n');
 
-	var lines = FS.readFileSync(prj_path+file, charset).replace(reg_comment,
-		'').replace(/^\s+/g,'').replace(/\r/g,'').split('\n'), //要去掉BOM头
+	var file_ext = file.slice(-4),
+		fc = FS.readFileSync(prj_path+file, charset).replace(reg_data_key, function(input, $1){
+				return glb_data[$1.trim()] || '';
+			}).replace(/^\s+/,''); //要去掉BOM头
+	if(file_ext==='scss'){ //编译sass文件
+		fc = compileSassFile(fc, file);
+	} //else if(file_ext==='lcss'){} //TODO
+	var lines = fc.replace(reg_comment, '').replace(/\r/g, '').split('\n'),
 		i = 0, len = lines.length, line, import_file;
 	for(; i < len; i++){
 		line = lines[i];
@@ -60,7 +90,7 @@ function combine(file){ //console.log(file);
 
 //输出css
 exports.output = function(filename, prj_conf, response){
-	prj_path = prj_conf.path; prj_path[prj_path.length-1]==='/' || (prj_path+='/');
+	initProject(prj_conf);
 	var file;
 	if(test_min[prj_path]){
 		var build_path = prj_conf.build_path; build_path[build_path.length-1]==='/' || (build_path+='/');
@@ -82,12 +112,11 @@ exports.output = function(filename, prj_conf, response){
 			response.writeHead(200, {'Content-Type':'text/plain'});
 			response.end('MOKTEXT-101: ['+file+'] is not found. The project is likely not built.');
 		}
+		glb_data = sass_config = null;
 		return;
 	}
 	file = prj_path + filename;
 	if(FS.existsSync(file) && FS.statSync(file).isFile()){
-		charset = prj_conf.charset || 'utf8';
-		err_log = [];
 		initCombine();
 		combine(filename);
 		response.writeHead(200, {'Content-Type':'text/css','Cache-Control':'max-age=0'});
@@ -98,7 +127,7 @@ exports.output = function(filename, prj_conf, response){
 			response.write(file_tree.join('\r\n')+'\r\n*/\r\n');
 			response.end(contents.join(''));
 		}
-		err_log = contents = combined_list = null;
+		err_log = contents = combined_list = glb_data = sass_config = null;
 	}else{
 		response.writeHead(200, {'Content-Type':'text/plain'});
 		response.end('MOKJS-404: Not found. Wrong path ['+file+'].');
@@ -115,10 +144,7 @@ exports.testMin = function(prj_conf, response){
 };
 //argv is like this: {_prj:'lecss', _cmd:'build', v:'1620', zip:''}
 exports.build = function(argv, prj_conf, response){
-	prj_path = prj_conf.path; prj_path[prj_path.length-1]==='/' || (prj_path+='/');
-	charset = prj_conf.charset || 'utf8';
-	err_log = [];
-
+	initProject(prj_conf);
 	response || (response = util.fakeResponse);
 	response.writeHead(200, {'Content-Type':'text/html','Cache-Control':'max-age=0'});
 	response._fake_ || response.write(global.HEAD_HTML.replace('{{title}}',
@@ -252,12 +278,13 @@ exports.build = function(argv, prj_conf, response){
 
 	var main_files = FS.readdirSync(prj_path+'main'),
 		main_len = main_files.length,
-		main_file, fc, fd, file_md5; //console.log(main_files)
+		main_file, fc, fd, file_md5, file_ext; //console.log(main_files)
 	response.write(''); //让控制台输出一个空行
 	for(var i = 0; i < main_len; i++){
 		main_file = main_files[i];
 		//过滤非css文件
-		if(main_file.slice(-4)==='.css'){
+		file_ext = main_file.slice(main_file.lastIndexOf('.')+1);
+		if(file_ext==='css' || file_ext==='scss'){
 			response.write('<br />=== 正在合并和压缩文件 '+main_file+' 　--- '+(main_len-i));
 			abc_allname.push(main_file);
 			initCombine();
@@ -303,7 +330,7 @@ exports.build = function(argv, prj_conf, response){
 			}
 		}
 	}
-	contents = combined_list = null;
+	contents = combined_list = glb_data = sass_config = null;
 	
 	version_file && err_log.length===0 && updateAbcFile();
 	zip.finalize(function(err){

@@ -1,6 +1,5 @@
 /*--
 	HTML模块化
-	-version 1.0.0
 	-site http://mokjs.com/moktext/
 */
 var FS = require('fs'),
@@ -72,7 +71,7 @@ function combine(file, data, prefile){ //console.log(file);
 	var lines = FS.readFileSync(prj_path+file, charset).replace(reg_echo, function(m){
 			//写入data
 			m = m.slice(2,-2).trim();
-			if(/^[\$\w]*$/.test(m)){return data[m]||(data[m]===0?'0':'')}
+			if(/^[\$\w]*$/.test(m)){return data[m]||(data.hasOwnProperty(m)?String(data[m]):'')}
 			m = execJS(m, data);
 			return m || (m===0 ? '0' : '');
 		}).replace(reg_mokdata, function(m, name, value){

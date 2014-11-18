@@ -1,6 +1,5 @@
 /*--
 	文档生成工具，提取代码注释生成文档。
-	-version 1.0.0
 	-site http://mokjs.com/mokdoc/
 */
 var PATH = require('path'),
