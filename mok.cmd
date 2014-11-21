@@ -1,5 +1,5 @@
 @echo off
 
-node mok
+node mok.js
 
 pause
