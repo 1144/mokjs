@@ -13,7 +13,7 @@ var projects = {
 		build_path: '../demos/blog/build/',
 		modular_spec: 'CMD',	//遵循的模块化规范：'CMD' - CMD规范，'Modules' - CommonJS Modules规范
 		boot_js: 'abc.js',	//启动文件（种子文件）
-		use_base: true,	//是否使用了base.js（base.js是拆分出来的基本库文件或所有页面都用到的文件）
+		common_js: 'base.js',	//公共js文件，一般包含基本库、基本组件等
 		charset: 'utf8',	//gbk
 		//格式化上线tag号。参数tag_num为打包时输入的版本号或某种格式的字符串。
 		format_tag: function(tag_num){
@@ -168,7 +168,7 @@ exports.alias2tagid = {
 };
 
 /*exports.proxy_conf = {
-	//代理模块要监听的端口8086
+	//配置代理服务器要监听的端口8086
 	'8086': {
 		'ecom.com': [
 			{

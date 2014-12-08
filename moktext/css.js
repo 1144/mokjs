@@ -64,7 +64,9 @@ function combine(file){ //console.log(file);
 	if(file_ext==='scss'){ //编译sass文件
 		fc = compileSassFile(fc, file);
 	} //else if(file_ext==='lcss'){} //TODO
-	var lines = fc.replace(reg_comment, '').replace(/\r/g, '').split('\n'),
+	var lines = fc.replace(reg_comment, function(input){
+			return input.replace(/@import/g, '//@import');
+		}).replace(/\r/g, '').split('\n'),
 		i = 0, len = lines.length, line, import_file;
 	for(; i < len; i++){
 		line = lines[i];

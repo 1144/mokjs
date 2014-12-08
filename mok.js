@@ -8,12 +8,28 @@ var URL = require('url'),
 	FS = require('fs'),
 	MIME = require('./common/mime'),
 	CONF = require('./__config'),
+	updateConf = true, //是否更新config
 	mokjs = require('./mok-js/main'),
 	allRoutes = CONF.routes,
 	outputJs = mokjs.output,
 	testMin = {}; //项目是否处于测试压缩文件模式
 
 global.HEAD_HTML = FS.readFileSync('./common/head.html', 'utf8');
+
+FS.watch('./__config.js', function(en){
+	if(updateConf && en==='change'){ //防止重复触发
+		require.cache[require.resolve('./__config')] = null;
+		try{
+			CONF = require('./__config');
+			allRoutes = CONF.routes;
+		}catch(e){
+			console.log('MOKJS-101: 配置文件语法错误！\n'+e);
+		}
+		//console.log('__config.js changed');
+		updateConf = false;
+		setTimeout(function(){updateConf = true}, 1);
+	}
+});
 
 function onRequest(request, response, port){
 	var req_path = URL.parse(request.url).pathname; //pathname不包括参数
@@ -39,11 +55,15 @@ function onRequest(request, response, port){
 				}else if(testMin[route.project]){
 					var build_path = prj_conf.build_path;
 					build_path[build_path.length-1]==='/' || (build_path+='/');
-					outputFile(build_path+'min/'+file, '.js', response);
-				}else if(file===prj_conf.boot_js){
+					if(prj_conf.comb_mode){
+						require('./mok_modules/mok_comb').comb(file, prj_conf, response);
+					}else{
+						outputFile(build_path+'min/'+file, '.js', response);
+					}
+				}else if(file===prj_conf.boot_js || (prj_conf.comb_mode && file.slice(3)==='boot.js')){
 					var src_path = prj_conf.path;
 					src_path[src_path.length-1]==='/' || (src_path+='/');
-					outputFile(src_path+file, '.js', response);
+					outputFile(src_path+(prj_conf.boot_js||'boot.js'), '.js', response);
 				}else{
 					outputJs(file, prj_conf, response);
 				}
@@ -63,7 +83,7 @@ function onRequest(request, response, port){
 
 function execCmd(req_path, request, response){
 	//构建项目、生成文档、查看模块等命令
-	response.writeHead(200, {'Content-Type':'text/html','Cache-Control':'max-age=0'});
+	response.writeHead(200, {'Content-Type':'text/html','Cache-Control':'max-age=5'});
 	var argv = parseArgv(req_path.slice(2).split('-')),
 		prj = argv._prj, prj_conf = CONF.projects[prj];
 	if(!prj||!prj_conf){
@@ -75,6 +95,10 @@ function execCmd(req_path, request, response){
 	
 	var cmd = argv._cmd;
 	if(cmd==='b' || cmd==='build'){ //打包压缩
+		if(prj_conf.comb_mode){
+			require('./mok-js/build_comb').build(argv, prj_conf, response);
+			return;
+		}
 		var type = prj_conf.type;
 		if(type){
 			type==='html' || type==='css' || (type = false);
@@ -86,10 +110,14 @@ function execCmd(req_path, request, response){
 			require('./moktext/css').testMin(prj_conf, response);
 			return;
 		}
-		testMin[prj] = !testMin[prj];
-		response.end(global.HEAD_HTML.replace('{{title}}', '切换测试JS压缩文件模式')+
-			'已 <strong>'+(testMin[prj]?'切换到':'取消')+
-			'</strong> 测试JS压缩文件模式。</body></html>');
+		testMin[prj] = !!prj_conf.__hasbuilt && !testMin[prj];
+		response.write(global.HEAD_HTML.replace('{{title}}', '切换测试JS压缩文件模式'));
+		prj_conf.__hasbuilt ? response.end('已 <b>'+ (testMin[prj]?'<em>切换到</em>':'取消') +
+			'</b> 测试JS压缩文件模式。</body></html>') :
+			response.end('未构建项目，<b>不能切换到</b> 测试JS压缩文件模式。<br/>'+
+				'另：修改配置文件后需要重新构建项目。</body></html>');
+		prj_conf.comb_mode && testMin[prj] &&
+			require('./mok_modules/mok_comb').testVersion(prj_conf);
 	
 	}else if(cmd==='d' || cmd==='doc'){ //生成文档
 		require('./mokdoc/main').main(argv, prj_conf, response);
@@ -109,10 +137,13 @@ function outputFile(file, file_ext, response){
 	if(FS.existsSync(file)){
 		FS.readFile(file, 'binary', function(err, filedata){
 			if(err){
-				response.writeHead(500, {'Content-Type': 'text/plain'});
+				response.writeHead(500, {'Content-Type':'text/plain'});
 				response.end('MOKJS-500: Read file error. Maybe ['+file+'] is not a file. \n'+err.toString());
 			}else{
-				response.writeHead(200, {'Content-Type': MIME[file_ext] || 'unknown'});
+				response.writeHead(200, {
+					'Cache-Control': 'no-cache,max-age=0',
+					'Content-Type': MIME[file_ext] || 'unknown'
+				});
 				response.write(filedata, 'binary');
 				response.end();
 			}

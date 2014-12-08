@@ -11,17 +11,17 @@ var FS = require('fs'),
 	err_log = [],
 	prj_path,
 
-	base_combined = {}, //main/base.js文件依赖的，用于排重
+	common_combined = {}, //公共文件common_js文件依赖的，用于排重
 	combined_list,
 	file_tree,
 	tree_deep,
 	contents;
 
 //初始化合并
-function initCombine(isBase, useBase){
+function initCombine(common_js, isCommon){
 	combined_list = {};
-	if(useBase && !isBase){
-		for(var k in base_combined){
+	if(common_js && !isCommon){
+		for(var k in common_combined){
 			combined_list[k] = true;
 		}
 	}
@@ -112,11 +112,11 @@ function combine(file){
 	tree_deep--;
 }
 
-//无预编译模式，输出前就要即时分析依赖
+//输出JS
 exports.output = function(filename, prj_conf, response){
-	var isBase = filename==='base.js';
+	var isCommon = filename===prj_conf.common_js;
 	prj_path = prj_conf.path; prj_path[prj_path.length-1]==='/' || (prj_path+='/');
-	filename = 'main/' + filename;
+	filename = filename[0]==='.' ? util.resolvePath('main/',filename) : 'main/'+filename;
 	var file = prj_path + filename, cmd_spec = prj_conf.modular_spec === 'CMD';
 	response.writeHead(200, {'Content-Type':'application/x-javascript',
 		'Cache-Control':'max-age=0'});
@@ -126,7 +126,7 @@ exports.output = function(filename, prj_conf, response){
 		err_log = [];
 		//载入模块简称与全称的映射
 		util.loadModuleAbbr(prj_path);
-		initCombine(isBase, prj_conf.use_base);
+		initCombine(prj_conf.common_js, isCommon);
 		cmd_spec ? combineCMD(filename) : combine(filename);
 		if(err_log.length){
 			response.end('!alert("'+err_log.join('\\n\\n'
@@ -138,7 +138,7 @@ exports.output = function(filename, prj_conf, response){
 				'mok-js/br-mok-Modules.js', 'utf8'));
 			response.end(contents+'\r\nrequire("'+filename.slice(0,-3)+'");\r\n');
 		}
-		isBase && prj_conf.use_base && (base_combined = combined_list);
+		isCommon && prj_conf.common_js && (common_combined = combined_list);
 		err_log = contents = combined_list = null;
 	}else{
 		response.end('!alert("MOKJS-404: Not found. Wrong path ['+file+'].");');

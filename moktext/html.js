@@ -180,8 +180,7 @@ exports.build = function(argv, prj_conf, response){
 		for(var k in data){glb_data.hasOwnProperty(k) || (glb_data[k] = data[k])}
 	}
 
-	var ver_js = prj_conf.ver_js,
-		path_all = prj_conf.build_path,
+	var path_all = prj_conf.build_path,
 		start_time = Date.now();
 	path_all[path_all.length-1]==='/' || (path_all+='/');
 
@@ -193,12 +192,14 @@ exports.build = function(argv, prj_conf, response){
 
 	FS.existsSync(path_all) || FS.mkdirSync(path_all); //不能清空文件夹
 	
-	var list = require(require('path').resolve(prj_path+'build-list')).list;
-	var main_files = [], main_len, k,
+	var k = require.resolve(require('path').resolve(prj_path+'build-list'));
+	var build_list = require(k);
+	require.cache[k] = null; //不缓存构建列表
+	var main_files = [], main_len,
 		main_file, fc, fd, file_md5; //console.log(main_files)
 	response.write(''); //让控制台输出一个空行
-	for(k in list){
-		list.hasOwnProperty(k) && main_files.push(k); //计算总长度
+	for(k in build_list){
+		build_list.hasOwnProperty(k) && main_files.push(k); //计算总长度
 	}
 	for(k = 0, main_len = main_files.length; k < main_len; k++){
 		main_file = main_files[k];
@@ -210,7 +211,7 @@ exports.build = function(argv, prj_conf, response){
 		fc = contents.join('\r\n') +
 			'<!-- file tree:\r\n'+file_tree.join('\r\n')+'\r\n- By MOKTEXT. -->';
 		
-		list[main_file]===1 || (main_file = list[main_file]);
+		build_list[main_file]===1 || (main_file = build_list[main_file]);
 		makeDir(main_file, path_all);
 		fd = FS.openSync(path_all+main_file, 'w', '0666');
 		FS.writeSync(fd, fc, 0, charset);

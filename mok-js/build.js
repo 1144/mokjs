@@ -44,9 +44,7 @@ exports.build = function(argv, prj_conf, response){
 		main_len, main_count = 0,
 		calcing = {}, //记录正在遍历的，防止循环依赖
 		depended = {},
-		depend_list = [],
-		awdepended, //always depended
-		awdepend_list;
+		depended_list = [];
 
 	//处理压缩命令
 	comp_cmd = comp_cmd.replace('{filename}', path_main+';').replace('{filename}', path_min+';');
@@ -216,7 +214,7 @@ exports.build = function(argv, prj_conf, response){
 				calcDependList(fi);
 			}
 		}
-		depend_list.push(file);
+		depended_list.push(file);
 		depended[file] = true;
 	}
 	//更新启动文件里的JS文件版本信息
@@ -278,6 +276,7 @@ exports.build = function(argv, prj_conf, response){
 		}
 		response.end('<br/><br/>========= 合并压缩成功！<br/>========= 总共用时：'+
 			(Date.now()-start_time)/1000+' s.'+util.buildTime()+'<br/><br/></body></html>');
+		prj_conf.__hasbuilt = true;
 	}
 	//压缩文件
 	function compressFile(file){
@@ -310,9 +309,15 @@ exports.build = function(argv, prj_conf, response){
 	}
 	//合并和压缩
 	function combineAndCompress(){
-		prj_conf.use_base && calcDependList('main/base.js');
-		awdepended = depended;
-		awdepend_list = depend_list;
+		var common_js = prj_conf.common_js,
+			use_common = !!common_js,
+			commoned,
+			commoned_list;
+		if(use_common){
+			calcDependList('main/'+common_js);
+			commoned = depended;
+			commoned_list = depended_list;
+		}
 
 		var main_files = FS.readdirSync(prj_path+'main'), main_file;
 		main_len = main_files.length;
@@ -325,7 +330,7 @@ exports.build = function(argv, prj_conf, response){
 		}
 		main_len = main_files.length;
 		response.write('<br/>');
-		for(var i = 0; i < main_len; i++){
+		for(var i = 0, j; i < main_len; i++){
 			main_file = main_files[i];
 			response.write('<br/>====== 正在合并和压缩文件 '+main_file+' 　--- '+(main_len-i));
 			main_len-i===1 && response.write('<br/>====== 正在努力压缩ing ...');
@@ -334,22 +339,28 @@ exports.build = function(argv, prj_conf, response){
 				main_count++;
 				continue;
 			}
-			if(main_file==='base.js'){ //base.js只能单独处理
-				depend_list = awdepend_list.slice(0);
+			calcing = {};
+			depended = {};
+			depended_list = [];
+			if(use_common){
+				if(main_file===common_js){ //公共文件单独处理
+					depended_list = commoned_list;
+				}else{
+					for(j in commoned){
+						depended[j] = true;
+					}
+					calcDependList('main/'+main_file);
+				}
 			}else{
-				calcing = {};
-				depended = {};
-				for(var aw in awdepended){depended[aw]=true}
-				depend_list = [];
 				calcDependList('main/'+main_file);
 			}
 
 			//合并文件
-			var j = 0, dl = depend_list.length,
+			var j = 0, dl = depended_list.length,
 				fd = FS.openSync(path_main+main_file, 'w', '0666'),
 				position = FS.writeSync(fd, br_mok, 0, charset);
 			for(; j < dl; j++){ //必须正序
-				position += FS.writeSync(fd, '\r\n'+all_files[depend_list[j]], position, charset);
+				position += FS.writeSync(fd, '\r\n'+all_files[depended_list[j]], position, charset);
 			}
 			FS.writeSync(fd, '\r\nrequire("main/'+main_file.slice(0,-3)+'");\r\n',
 				position, charset);

@@ -54,20 +54,43 @@ exports.resolveHCPath = function(p1, p2){
 
 //载入模块简称
 var prj = '', //项目路径
-	mod_abbr = {},
-	abbr_mod = {};
-exports.loadModuleAbbr = function(prj_path){
-	if(prj_path===prj){return}
-	prj = prj_path;
-	if(require('fs').existsSync(prj_path+'module_abbr.js')){
-		abbr_mod = require(require('path').resolve(prj_path+'module_abbr'));
-		mod_abbr = {};
-		for(var k in abbr_mod){
-			abbr_mod.hasOwnProperty(k) && (mod_abbr[abbr_mod[k]] = k);
-		}
-	}else{
-		mod_abbr = {}, abbr_mod = {};
+	abbr_mods = {},
+	abbr_mod,
+	mod_abbrs = {},
+	mod_abbr;
+var loadAbbrMod = function(mod, prj_path){
+	try{abbr_mod = require(mod);}catch(e){
+		console.log('MOKJS-102: module_abbr.js 里语法错误！\n'+e);return}
+	mod_abbr = {};
+	for(var k in abbr_mod){
+		abbr_mod.hasOwnProperty(k) && (mod_abbr[abbr_mod[k]] = k);
 	}
+	abbr_mods[prj_path] = abbr_mod;
+	mod_abbrs[prj_path] = mod_abbr;
+};
+exports.loadModuleAbbr = function(prj_path){
+	if(prj_path===prj){return} //未切换项目
+	prj = prj_path;
+	abbr_mod = abbr_mods[prj_path];
+	if(abbr_mod){
+		mod_abbr = mod_abbrs[prj_path];
+		return;
+	}
+	if(!require('fs').existsSync(prj_path+'module_abbr.js')){
+		mod_abbr = {}, abbr_mod = {};
+		return;
+	}
+	var updateConf = true,
+		m = require.resolve(require('path').resolve(prj_path+'module_abbr'));
+	require('fs').watch(prj_path+'module_abbr.js', function(en){
+		if(updateConf && en==='change'){ //防止重复触发
+			require.cache[m] = null;
+			loadAbbrMod(m, prj_path); console.log(prj_path+'module_abbr.js changed');
+			updateConf = false;
+			setTimeout(function(){updateConf = true}, 1);
+		}
+	});
+	loadAbbrMod(m, prj_path);
 };
 exports.getModuleAbbr = function(modname){
 	return mod_abbr[modname] || modname;
