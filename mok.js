@@ -22,6 +22,7 @@ FS.watch('./__config.js', function(en){
 		try{
 			CONF = require('./__config');
 			allRoutes = CONF.routes;
+			console.log('MOKJS-200: 配置更新成功！');
 		}catch(e){
 			console.log('MOKJS-101: 配置文件语法错误！\n'+e);
 		}
@@ -119,8 +120,6 @@ function execCmd(req_path, request, response){
 		prj_conf.comb_mode && testMin[prj] &&
 			require('./mok_modules/mok_comb').testVersion(prj_conf);
 	
-	}else if(cmd==='d' || cmd==='doc'){ //生成文档
-		require('./mokdoc/main').main(argv, prj_conf, response);
 	}else{
 		var extcmd = require('./mok_modules/mok_extend_cmd')[cmd];
 		if(extcmd){

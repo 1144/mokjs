@@ -1,17 +1,15 @@
 [![logo](http://mokjs.sinaapp.com/images/logo.png)](http://mokjs.com/)
 
-mokjs - 前端模块化开发框架
-=========
+# mokjs - 前端开发服务框架
 
-前端工具模块集成框架！
-=========
+JS/CSS/HTML模块化开发，web服务器，代理服务器，前端开发工具集成。
 
-源码还没有90KB的模块化框架！
-=========
+## 源码还没有90KB的框架！
 
-详细文档地址：[http://mokjs.com/](http://mokjs.com/)
-=========
+## 项目网站（详细文档地址）
 
-版本发布记录
-=========
+[http://mokjs.com/](http://mokjs.com/)
+
+## 版本发布记录
+
 请看 [CHANGELOG.md](https://github.com/1144/mokjs/blob/master/CHANGELOG.md)
