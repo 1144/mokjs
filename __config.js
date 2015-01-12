@@ -16,9 +16,9 @@ var projects = {
 		common_js: 'base.js',	//公共js文件，一般包含基本库、基本组件等
 		charset: 'utf8',	//gbk
 		//格式化上线tag号。参数tag_num为打包时输入的版本号或某种格式的字符串。
-		format_tag: function(tag_num){
+		format_tag: function (tag_num) {
 			var t = new Date(), M = t.getMonth()+1, d = t.getDate();
-			if(!tag_num){
+			if (!tag_num) {
 				var h = t.getHours(), m = t.getMinutes();
 				h<10 && (h = '0'+h);
 				m<10 && (m = '0'+m);
@@ -43,9 +43,9 @@ var projects = {
 		version_file: 'version.txt',	//版本文件，存放版本和MD5信息，可选
 		charset: 'utf8',	//gbk。css源文件编码
 		//格式化上线tag号，可选
-		format_tag: function(tag_num){
+		format_tag: function (tag_num) {
 			var t = new Date(), M = t.getMonth()+1, d = t.getDate();
-			if(!tag_num){
+			if (!tag_num) {
 				var h = t.getHours(), m = t.getMinutes();
 				h<10 && (h = '0'+h);
 				m<10 && (m = '0'+m);
@@ -93,7 +93,7 @@ var routes = {
 		},
 		{
 			regexp: /.*/,	//不满足前面格式的其他任何请求，直接定位到资源位置
-			locate: function(match){
+			locate: function (match) {
 				//返回相对于__config.js这个文件的路径，也可用绝对路径
 				return '../demos/blog/static' + match[0]; //return 'D:/1144/demos/blog/static' + match[0];
 			}
@@ -105,18 +105,18 @@ var routes = {
 			project: 'myhtml'
 		}, {
 			regexp: /.+?\.pre$/,	//以.pre结尾的请求，映射到预览模块
-			handler: function(match, request, response, reqpath){
+			handler: function (match, request, response, reqpath) {
 				require('./moktext/html').viewModule(match[0].slice(0,-3)+'html', projects['myhtml'], response);
 			}
 		}, {
 			regexp: /.*?\/$/,	//以/结尾的，请求对应的index.html，实现默认index.html
 			project: 'myhtml',
-			format: function(match){
+			format: function (match) {
 				return match[0]+'index.html';
 			}
 		}, {
 			regexp: /.*/,
-			locate: function(match){
+			locate: function (match) {
 				return projects['myhtml'].path + match[0];
 			}
 		}
@@ -124,7 +124,7 @@ var routes = {
 	's.m.com': [	//图片、CSS和JS资源
 		{
 			regexp: /.*/,
-			locate: function(match){
+			locate: function (match) {
 				return '../demos/www' + match[0];	 //不需要处理的资源，直接定位到资源位置
 			}
 		}
@@ -134,7 +134,7 @@ var routes = {
 			//用自定义的模块 处理url符合某种格式的http请求：http://count.cn/3
 			//累加最后的数字
 			regexp: /^\/(\d+)$/,
-			handler: function(match, request, response, reqpath){
+			handler: function (match, request, response, reqpath) {
 				require('./mok_modules/demo').count(match[1], response);
 			}
 		}
@@ -147,7 +147,7 @@ var routes = {
 		}, {
 			regexp: /^\/test\/(\w+\.js)$/,
 			project: 'test',
-			format: function(match){	//对js请求路径进行重定向
+			format: function (match) {	//对js请求路径进行重定向
 				return match[1];
 			}
 		}
@@ -161,19 +161,13 @@ exports.routes = routes;
 //js文件压缩命令，使用uglifyjs压缩
 exports.compress_cmd = 'uglifyjs {filename} -m -c unused=true -o {filename}';
 
-//mokdoc标签别名配置：tag的别名与tag id的映射
-exports.alias2tagid = {
-	'method': 'fn',
-	'version': 'ver'
-};
-
 /*exports.proxy_conf = {
 	//配置代理服务器要监听的端口8086
 	'8086': {
 		'ecom.com': [
 			{
 				regexp: /b\.html/,
-				head: function(header, match){
+				head: function (header, match) {
 					return {
 						host: 'm.com',
 						path: '/start.html'
