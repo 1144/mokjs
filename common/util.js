@@ -1,3 +1,4 @@
+var fs = require('fs');
 
 //伪造response
 exports.fakeResponse = {
@@ -32,7 +33,7 @@ exports.repeat = function (str, times) {
 //处理JS相对路径
 //p1已知路径，p2是相对于p1的路径，即要算出p2的绝对路径
 exports.resolvePath = function (p1, p2) {
-	if (p2[0] === '.') {
+	if (p2[0]==='.') {
 		var a = p2.split('./'),
 			l = a.length,
 			b = p1.split('/').slice(0, a[0]==='' ? 1-l : -l);
@@ -41,15 +42,40 @@ exports.resolvePath = function (p1, p2) {
 	return p2;
 };
 
+//在parentDir里按照dir的目录层级一级级创建目录
+//parentDir 目标路径，以“/”结尾，例如 D:/blog/ 或 /usr/local/blog/
+//dir 目录名（以“/”结尾），或包含目录名的文件名，例如 main/base.js 
+exports.mkdir = function (parentDir, dir) {
+	var i = dir.indexOf('/') + 1;
+	if (i>0) {
+		parentDir += dir.slice(0, i);
+		fs.existsSync(parentDir) || fs.mkdirSync(parentDir);
+		this.mkdir(parentDir, dir.slice(i));
+	}
+};
+//删除dir里的所有文件和目录
+var cleardir = function (dir) {
+	fs.existsSync(dir) && fs.readdirSync(dir).forEach(function (file) {
+		file = dir+'/'+file;
+		if (fs.statSync(file).isFile()) {
+			fs.unlinkSync(file);
+		} else {
+			cleardir(file);
+			fs.rmdirSync(file);
+		}
+	});
+};
+exports.cleardir = cleardir;
+
 //处理HTML, CSS相对路径
 //p1已知路径，p2是相对于p1的路径，即要算出p2的绝对路径
 exports.resolveHCPath = function (p1, p2) {
-	if (p2[0] === '.') {
+	if (p2[0]==='.') {
 		var a = p2.split('./'), l = a.length,
 		b = p1.split('/').slice(0, -l);
 		return b.length ? b.join('/')+'/'+a[l-1] : a[l-1];
 	}
-	return p1.slice(0, p1.lastIndexOf('/') + 1) + p2;
+	return p1.slice(0, p1.lastIndexOf('/') + 1)+p2;
 };
 
 //载入模块简称
@@ -61,8 +87,8 @@ var prj = '', //项目路径
 var loadAbbrMod = function (mod, prj_path) {
 	try {
 		abbr_mod = require(mod);
-	} catch (e) {
-		console.log('MOKJS-102: module-abbr.js 里语法错误！\n' + e);
+	} catch (ex) {
+		console.log('MOKJS-102: module-abbr.js 里语法错误！\n'+ex);
 		return;
 	}
 	mod_abbr = {};
@@ -73,22 +99,22 @@ var loadAbbrMod = function (mod, prj_path) {
 	mod_abbrs[prj_path] = mod_abbr;
 };
 exports.loadModuleAbbr = function (prj_path) {
-	if (prj_path === prj) {return} //未切换项目
+	if (prj_path===prj) {return} //未切换项目
 	prj = prj_path;
 	abbr_mod = abbr_mods[prj_path];
 	if (abbr_mod) {
 		mod_abbr = mod_abbrs[prj_path];
 		return;
 	}
-	var fs = require('fs');
-	if (!fs.existsSync(prj_path + 'module-abbr.js')) {
+	
+	if (!fs.existsSync(prj_path+'module-abbr.js')) {
 		mod_abbr = {}, abbr_mod = {};
 		return;
 	}
 	var updateConf = true,
-		m = require.resolve(require('path').resolve(prj_path + 'module-abbr'));
-	fs.watch(prj_path + 'module-abbr.js', function (en) {
-		if (updateConf && en==='change') { //防止重复触发
+		m = require.resolve(require('path').resolve(prj_path+'module-abbr'));
+	fs.watch(prj_path+'module-abbr.js', function (eventType) {
+		if (updateConf && eventType==='change') { //防止重复触发
 			require.cache[m] = null;
 			loadAbbrMod(m, prj_path);
 			//console.log(prj_path+'module-abbr.js changed');
@@ -103,7 +129,7 @@ exports.getModuleAbbr = function (modname) {
 };
 
 exports.parseRequire = function (line, srcfile) {
-	line = '!' + line;
+	line = '!'+line;
 	var req = 'require\n', ri = 0, j, c,
 		i = 1, l = line.length,
 		q = '', //存放单引号或双引号，为空则意味着不在字符串里
@@ -113,7 +139,7 @@ exports.parseRequire = function (line, srcfile) {
 		if (c==='"' || c==="'") {
 			if (c===q && line[i-1]!=='\\') { //字符串结束
 				q = '';
-				if (ri > 7) { //收集模块结束
+				if (ri>7) { //收集模块结束
 					if (m) {
 						if (abbr_mod[m]) { //是简称
 							ms.push(abbr_mod[m]);
@@ -130,11 +156,11 @@ exports.parseRequire = function (line, srcfile) {
 			} else {
 				q || (q = c); //q不存在 则字符串开始
 			}
-		} else if (q === '') { //不在字符串里
-			if (c === req[ri]) {
+		} else if (q==='') { //不在字符串里
+			if (c===req[ri]) {
 				j = i, ri++;
-			} else if (ri > 6) {
-				if (c === '(') {
+			} else if (ri>6) {
+				if (c==='(') {
 					ri = /[\w.$]/.test(line[j-7]) ? 0 : 8;
 				} else if (c!==' ' && c!=='\t') {
 					ri = 0;
@@ -145,9 +171,9 @@ exports.parseRequire = function (line, srcfile) {
 			} else {
 				ri = 0;
 			}
-		} else if (ri > 7) { //收集模块ing，btw 模块名不能包含单双引号！
+		} else if (ri>7) { //收集模块ing，btw 模块名不能包含单双引号！
 			c===' ' || c==='\t' ?
-				console.log(srcfile + ' 里引用的模块名包含空白字符！') : (m += c);
+				console.log(srcfile+' 里引用的模块名包含空白字符！') : (m += c);
 			continue;
 		}
 		r += c;

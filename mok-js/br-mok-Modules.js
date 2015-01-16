@@ -7,8 +7,8 @@ if (!this.mok) {
 				return done[id];
 			}
 			var x = m[id], module = {id:id, exports:{}};
-			if (x === undef) {
-				throw "MOK-JS error: can't find module ["+ id +"]";
+			if (x===undef) {
+				throw "MOK-JS error: can't find module ["+id+"]";
 			}
 			done[id] = function () {}; //jiandan-cubao-di break circular dependency
 			x(require, module, module.exports);

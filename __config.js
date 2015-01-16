@@ -11,7 +11,8 @@ var projects = {
 		//有多个开发分支时，将路径指到对应分支就行（解决多分支切换开发）。
 		path: '../demos/blog/src-define/',
 		build_path: '../demos/blog/build/',
-		modular_spec: 'CMD',	//遵循的模块化规范：'CMD' - CMD规范，'Modules' - CommonJS Modules规范
+		//遵循的模块化规范：'CMD' - CMD规范，'Modules' - CommonJS Modules规范
+		modular_spec: 'CMD',
 		boot_js: 'abc.js',	//启动文件（种子文件）
 		common_js: 'base.js',	//公共js文件，一般包含基本库、基本组件等
 		charset: 'utf8',	//gbk
@@ -25,8 +26,10 @@ var projects = {
 				tag_num = String(h)+String(m);
 			}
 			return {
-				version: '' + t.getFullYear() + (M>9 ? M : '0'+M) +'/'+ (d>9 ? d : '0'+d) + '/js_' + tag_num + '/',
-				folder_name: 'js_' + tag_num	//存放所有更新的文件的文件夹名，在updated目录下。前后都别加反斜线“/”。
+				version: ''+t.getFullYear()+(M>9 ? M : '0'+M)+'/'+
+					(d>9 ? d : '0'+d)+'/js_'+tag_num+'/',
+				//存放所有更新的文件的文件夹名，在updated目录下。前后都别加反斜线“/”。
+				folder_name: 'js_'+tag_num
 			};
 		},
 		build_data: {
@@ -53,8 +56,10 @@ var projects = {
 			}
 			//前后都别加反斜线“/”
 			return {
-				version: '' + t.getFullYear() + (M>9 ? M : '0'+M) +'/'+ (d>9 ? d : '0'+d) + '/css_' + tag_num + '/',
-				folder_name: 'css_' + tag_num	//存放有更新的文件的文件夹名，在updated目录下
+				version: ''+t.getFullYear()+(M>9 ? M : '0'+M)+'/'+
+					(d>9 ? d : '0'+d)+'/css_'+tag_num+'/',
+				//存放所有更新的文件的文件夹名，在updated目录下。前后都别加反斜线“/”。
+				folder_name: 'css_'+tag_num
 			};
 		}
 	},
@@ -84,18 +89,21 @@ var routes = {
 	'blog.cn': [
 		{
 			regexp: /^\/js\/(\w+\.js)$/,	//匹配http://blog.cn/js/*.js这样的js请求
-			project: 'blog'	//将请求映射到blog项目，regexp里(\w+\.js)部分的值为映射过去文件名
+			//将请求映射到blog项目，regexp里(\w+\.js)部分的值为映射过去文件名
+			project: 'blog'
 		},
 		{
 			regexp: /^\/css\/(.+?\.css)$/,	//匹配http://blog.cn/css/*.css这样的css请求
-			//说明：/css/a.css会映射到mycss下的a.css，/css/main/test.css会映射到mycss下的main/test.css
+			//说明：/css/a.css会映射到mycss下的a.css，
+			//“/css/main/test.css”会映射到mycss下的main/test.css
 			project: 'mycss'	//将请求映射到mycss项目
 		},
 		{
 			regexp: /.*/,	//不满足前面格式的其他任何请求，直接定位到资源位置
 			locate: function (match) {
 				//返回相对于__config.js这个文件的路径，也可用绝对路径
-				return '../demos/blog/static' + match[0]; //return 'D:/1144/demos/blog/static' + match[0];
+				//return 'D:/1144/demos/blog/static' + match[0];
+				return '../demos/blog/static'+match[0];
 			}
 		}
 	],
@@ -106,7 +114,8 @@ var routes = {
 		}, {
 			regexp: /.+?\.pre$/,	//以.pre结尾的请求，映射到预览模块
 			handler: function (match, request, response, reqpath) {
-				require('./moktext/html').viewModule(match[0].slice(0,-3)+'html', projects['myhtml'], response);
+				require('./moktext/html').viewModule(match[0].slice(0, -3)+'html',
+					projects['myhtml'], response);
 			}
 		}, {
 			regexp: /.*?\/$/,	//以/结尾的，请求对应的index.html，实现默认index.html
@@ -117,7 +126,7 @@ var routes = {
 		}, {
 			regexp: /.*/,
 			locate: function (match) {
-				return projects['myhtml'].path + match[0];
+				return projects['myhtml'].path+match[0];
 			}
 		}
 	],
@@ -125,7 +134,8 @@ var routes = {
 		{
 			regexp: /.*/,
 			locate: function (match) {
-				return '../demos/www' + match[0];	 //不需要处理的资源，直接定位到资源位置
+				//不需要动态处理的资源，直接定位到资源位置
+				return '../demos/www'+match[0];
 			}
 		}
 	],

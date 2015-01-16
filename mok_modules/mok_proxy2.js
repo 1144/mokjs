@@ -1,10 +1,10 @@
 var proxy_port = parseInt(process.argv[2], 10);
-if(!proxy_port || proxy_port<0){
+if (!proxy_port || proxy_port<0) {
 	console.log('invalid port: '+proxy_port);
 	return;
 }
 var port_conf = (require('../__config').proxy2_conf || {})[proxy_port];
-if(!port_conf){
+if (!port_conf) {
 	console.log('no config, invalid port: '+proxy_port);
 	return;
 }
@@ -12,7 +12,7 @@ if(!port_conf){
 var net = require('net');
 
 //连接两个buffer
-function buffer_add(buf1, buf2){
+function concatBuffer(buf1, buf2) {
 	var buf1Len = buf1.length,
 		res = new Buffer(buf1Len + buf2.length);
 	buf1.copy(res);
@@ -21,11 +21,12 @@ function buffer_add(buf1, buf2){
 }
 
 //'\r\n\r\n'分开head和body
-function buffer_find_body(data){
+function findBody(data) {
 	var i = data.length;
-	while(i-- && i>10){ //10都算少的了
-		if(data[i]===0x0a&&data[i-2]===0x0a&&data[i-1]===0x0d&&data[i-3]===0x0d){
-			return i+1;
+	while (i-- && i>10) { //10都算少的了
+		if (data[i]===0x0a && data[i-2]===0x0a &&
+			data[i-1]===0x0d && data[i-3]===0x0d) {
+			return i + 1;
 		}
 	}
 	return -1;
@@ -33,19 +34,19 @@ function buffer_find_body(data){
 
 //CONNECT {method:'CONNECT', host, port}
 //GET/POST {metod, host, port, path, head, data}
-function parse_header(data, pos, conf){
-	var header_str = data.slice(0, pos).toString('utf8'); //console.log(header);
+function parseHeader(data, pos, conf) {
+	var header_str = data.slice(0, pos).toString('utf8');
 	var method = header_str.split(' ', 1)[0], arr;
-	if(method==='CONNECT'){
+	if (method==='CONNECT') {
 		arr = header_str.match(/^[A-Z]+\s([^:\s]+):(\d+)\sHTTP/);
-		if(arr){
+		if (arr) {
 			return {method:'CONNECT', host:arr[1], port:arr[2]};
 		}
-	}else{
+	} else {
 		arr = header_str.match(/^[A-Z]+\s(\S+)\sHTTP\/(\d\.\d)/);
-		if(arr){
+		if (arr) {
 			var host = header_str.match(/Host:\s([^\n\s\r]+)/)[1];
-			if(host){
+			if (host) {
 				var hp = host.split(':'),
 					path = arr[1].replace(/^http:\/\/[^\/]+/, ''),
 					r = header_str.indexOf('\r'),
@@ -64,13 +65,13 @@ function parse_header(data, pos, conf){
 					http_version: arr[2],
 					data: data.slice(pos)
 				};
-				if(conf[hp[0]] && !hp[1]){ //只对80端口的请求检查是否代理到指定端口
+				if (conf[hp[0]] && !hp[1]) { //只对80端口的请求检查是否代理到指定端口
 					var routes = conf[hp[0]], i = 0, len = routes.length, match;
-					for(; i < len; i++){
+					for (; i < len; i++) {
 						match = path.match(routes[i].regexp);
-						if(match){
+						if (match) {
 							var h = routes[i].head(header, match);
-							if(h.host){
+							if (h.host) {
 								header.host = h.host;
 								hd2 = hd2.replace('Host: '+host, 'Host: '+h.host+
 									(h.port&&h.port!='80' ? ':'+h.port : ''));
@@ -82,10 +83,11 @@ function parse_header(data, pos, conf){
 						}
 					}
 				}
-				if(arr[2]==='1.1'){
+				if (arr[2]==='1.1') {
 					header.head = method+' '+header.path+' HTTP/1.1'+hd2;
-				}else{
-					header.head = method+' http://'+header.host+(header.port!='80'?':'+header.port:'')+
+				} else {
+					header.head = method+' http://'+header.host+
+						(header.port!='80' ? ':'+header.port : '')+
 						header.path+' HTTP/'+arr[2]+hd2;
 				}
 				return header;
@@ -95,37 +97,26 @@ function parse_header(data, pos, conf){
 	return false;
 }
 
-function relay_connection(header, client){ //console.log(header);
+function relayConnection(header, client) {
+	//console.log(header.host, header.port);
 	var server = net.createConnection(header.port, header.host);
-	server.on('data', function(data){
-		client.write(data);
-	});
-	server.on('end', function(){
-		//console.log('server close');
-		client.end();
-	});
-	server.on('error', function(e){
-		console.log('\nProxy2 Server ' + e +'\non request:');
+	server.pipe(client);
+	server.on('error', function (err) {
+		console.log('\n\033[1m\033[31mProxy2 Server '+err+'\033[0m\non request:');
 		delete header.http_version, delete header.data;
 		console.log(header);
 		client.destroy();
 	});
 
-	client.on('data', function(data){
-		server.write(data);
-	});
-	client.on('end', function(){
-		//console.log('client close...');
-		server.end();
-	});
-	client.on('error', function(){
+	client.pipe(server);
+	client.on('error', function () {
 		server.destroy();
 	});
 
-	if(header.method==='CONNECT'){
+	if (header.method==='CONNECT') {
 		client.write(new Buffer('HTTP/1.1 200 Connection established\r\n'+
 			'Connection: close\r\n\r\n'));
-	}else{
+	} else {
 		server.write(new Buffer(header.head, 'utf8'));
 		server.write(header.data);
 	}
@@ -136,46 +127,44 @@ function relay_connection(header, client){ //console.log(header);
 	var cluster = require('cluster');
 	var numCPUs = require('os').cpus().length;
 
-	var sockServer = net.createServer(function(client){
+	var sockServer = net.createServer(function (client) {
 		var datas;
-		client.on('data', function(data){
-			if(datas){ //大部分请求都只触发一次data事件
-				datas = buffer_add(datas, data);
-			}else{
+		client.on('data', function (data) {
+			if (datas) { //大部分请求都只触发一次data事件
+				datas = concatBuffer(datas, data);
+			} else {
 				datas = data;
 			}
-			var pos = buffer_find_body(datas);
-			if(pos===-1)return;
-			var header = parse_header(datas, pos, port_conf);
-			if(header===false)return;
+			var pos = findBody(datas);
+			if (pos===-1) {return}
+			var header = parseHeader(datas, pos, port_conf);
+			if (header===false) {return}
 			client.removeAllListeners('data');
-			relay_connection(header, client);
+			relayConnection(header, client);
 		});
 	});
 
-	sockServer.on('listening', function(){
-		console.log('Proxy2 is listening '+sockServer.address().address+':'+proxy_port+' ...');
+	sockServer.on('listening', function () {
+		console.log('\033[1m\033[32mProxy2 is listening port '+
+			proxy_port+' ...\033[0m');
 	});
 
-	if(cluster.isMaster){
-		for(var i = 0; i < numCPUs; i++){
+	if (cluster.isMaster) {
+		for (var i = 0; i < numCPUs; i++) {
 			cluster.fork();
 		}
-		if(1==numCPUs){
+		if (1==numCPUs) {
 			cluster.fork(); //make sure it is more than 2
 		}
-		cluster.on('exit', function(worker, code, signal){
-			if(worker.suicide!==true){
-				cp_exec('taskkill /pid '+ worker.process.pid +' /T /F');
+		cluster.on('exit', function (worker, code, signal) {
+			if (worker.suicide!==true) {
+				cp_exec('taskkill /pid '+worker.process.pid+' /T /F');
 			}
-			//var exitCode = worker.process.exitCode;
-			//console.log('worker ' + worker.process.pid + ' died ('+exitCode+'). restarting...');
-			//cluster.fork();
 		});
-	}else{
+	} else {
 		sockServer.listen(proxy_port);
 	}
 
-	process.on('uncaughtException', function(err){
-		console.log('\nProxy2 Uncaught Error:\n' + err);
+	process.on('uncaughtException', function (ex) {
+		console.log('\n\033[1m\033[31mProxy2 Uncaught Exception:\033[0m\n'+ex);
 	});
