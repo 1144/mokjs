@@ -144,20 +144,16 @@ function execCmd(req_path, request, response) {
 
 function outputFile(file, file_ext, response) {
 	if (fs.existsSync(file)) {
-		fs.readFile(file, 'binary', function (err, filedata) {
-			if (err) {
-				response.writeHead(500, {'Content-Type':'text/plain'});
-				response.end('MOKJS-500: Read file error. Maybe ['+file+
-					'] is not a file. \n'+err.toString());
-			} else {
-				response.writeHead(200, {
-					'Cache-Control': 'no-cache,max-age=0',
-					'Content-Type': MIME[file_ext] || 'unknown'
-				});
-				response.write(filedata, 'binary');
-				response.end();
-			}
-		});
+		if (fs.statSync(file).isFile()) {
+			response.writeHead(200, {
+				'Cache-Control': 'no-cache,max-age=0',
+				'Content-Type': MIME[file_ext] || 'unknown'
+			});
+			fs.createReadStream(file).pipe(response);
+		} else {
+			response.writeHead(500, {'Content-Type':'text/plain'});
+			response.end('MOKJS-500: Read file error. ['+file+'] is not a file.');
+		}
 	} else {
 		response.writeHead(404, {'Content-Type':'text/plain'});
 		response.end('MOKJS-404: Not found. Wrong path ['+file+'].');
@@ -182,7 +178,7 @@ function parseArgv(args) {
 
 //创建服务器
 ~function (routes, default_port) {
-	var HTTP = require('http');
+	var http = require('http');
 	var rs = Object.keys(routes),
 		ports = [],
 		listen = {},
@@ -197,7 +193,7 @@ function parseArgv(args) {
 				ports.push(x);
 				~function (port) {
 					//！注意，端口被占用时，会抛出异常：Error: listen EADDRINUSE
-					HTTP.createServer(function (request, response) {
+					http.createServer(function (request, response) {
 						onRequest(request, response, port);
 					}).listen(port);
 				}(x);
@@ -214,7 +210,7 @@ function parseArgv(args) {
 			routes[x] = null;
 		}
 	}
-	console.log('\033[1m\033[32mMOKJS is running at this host, listening port(s): '+
+	console.log('\033[1m\033[32mMOKJS is running at this host, listening on port(s): '+
 		ports.join(', ')+'.\033[0m');
 }(allRoutes, ':'+CONF.http_port);
 

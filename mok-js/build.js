@@ -326,6 +326,7 @@ exports.build = function (argv, prj_conf, response) {
 				file = file.slice(prj_path_len + 5)+'/';
 				util.mkdir(path_main, file);
 				util.mkdir(path_min, file);
+				boot_js || util.mkdir(path_tag, file);
 			}
 		});
 	}

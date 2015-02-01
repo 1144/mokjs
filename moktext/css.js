@@ -290,6 +290,7 @@ exports.build = function (argv, prj_conf, response) {
 				file = file.slice(path_main_len)+'/';
 				util.mkdir(path_main, file);
 				util.mkdir(path_min, file);
+				version_file || util.mkdir(path_tag, file);
 			}
 		});
 	}
