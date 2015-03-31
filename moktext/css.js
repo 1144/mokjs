@@ -280,7 +280,7 @@ exports.build = function (argv, prj_conf, response) {
 	function readMainFiles(path, files) {
 		fs.readdirSync(path).forEach(function (filename) {
 			var file = path+'/'+filename,
-				file_ext = filename.slice(filename.lastIndexOf('.') + 1);;
+				file_ext = filename.slice(filename.lastIndexOf('.') + 1);
 			if (file_ext==='css' || file_ext==='scss') {
 				files.push(file.slice(path_main_len)); //把“main/”也去掉
 			} else if (filename[0]!=='.' && fs.statSync(file).isDirectory()) {

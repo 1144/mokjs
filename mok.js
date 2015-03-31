@@ -14,9 +14,9 @@ var url = require('url'),
 	outputJs = mokjs.output,
 	testMin = {}; //项目是否处于测试压缩文件模式
 
-global.HEAD_HTML = fs.readFileSync('./common/head.html', 'utf8');
+global.HEAD_HTML = fs.readFileSync(__dirname+'/common/head.html', 'utf8');
 
-fs.watch('./__config.js', function (eventType) {
+fs.watch(__dirname+'/__config.js', function (eventType) {
 	if (updateConf && eventType==='change') { //防止重复触发
 		require.cache[require.resolve('./__config')] = null;
 		try {
@@ -82,7 +82,7 @@ function onRequest(request, response, port) {
 		}
 	}
 	if (req_path==='/favicon.ico') {
-		outputFile('./common/favicon.ico', '.ico', response);
+		outputFile(__dirname+'/common/favicon.ico', '.ico', response);
 	} else {
 		//突破host请求线上资源
 		require('./mok_modules/mok_break_host').request(request, response);
