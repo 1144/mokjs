@@ -76,11 +76,6 @@ var projects = {
 			$jquery: '//libs.baidu.com/jquery/1.11.1/jquery.min.js'
 		},
 		charset: 'utf8'	//gbk。html源文件编码
-	},
-	'air': {
-		path: '../demos/air', //源代码路径
-		doc_path: '../demos/air-doc', //文档生成到哪里
-		charset: 'utf8' //源代码的文件编码
 	}
 };
 
@@ -167,7 +162,6 @@ var routes = {
 exports.http_port = http_port;
 exports.projects = projects;
 exports.routes = routes;
-
 //js文件压缩命令，使用uglifyjs压缩
 exports.compress_cmd = 'uglifyjs {filename} -m -c unused=true -o {filename}';
 

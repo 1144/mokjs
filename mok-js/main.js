@@ -116,18 +116,18 @@ function combine(file) {
 
 //输出JS
 exports.output = function (filename, prj_conf, response) {
-	var is_common = filename===prj_conf.common_js;
 	prj_path = prj_conf.path;
-	prj_path[prj_path.length-1]==='/' || (prj_path += '/');
 	filename = filename[0]==='.' ? util.resolvePath('main/',filename) : 'main/'+filename;
-	var file = prj_path+filename, cmd_spec = prj_conf.modular_spec==='CMD';
+	var file = prj_path+filename,
+		cmd_spec = prj_conf.modular_spec==='CMD',
+		is_common = filename===prj_conf.common_js;
 	response.writeHead(200, {
 		'Content-Type': 'application/x-javascript',
 		'Cache-Control': 'max-age=0'
 	});
 		
 	if (fs.existsSync(file) && fs.statSync(file).isFile()) {
-		charset = prj_conf.charset || 'utf8';
+		charset = prj_conf.charset;
 		err_log = [];
 		//载入模块简称与全称的映射
 		util.loadModuleAbbr(prj_path);

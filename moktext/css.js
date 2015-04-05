@@ -38,7 +38,7 @@ function compileSassFile(file_content, file) {
 //初始化项目
 function initProject(prj_conf) {
 	prj_path = prj_conf.path;
-	prj_path[prj_path.length-1]==='/' || (prj_path += '/');
+	prj_path.slice(-1)==='/' || (prj_path += '/');
 	charset = prj_conf.charset || 'utf8';
 	at_charset = charset[0].toLowerCase()==='u' ? 'utf-8' : charset;
 	glb_data = prj_conf.data || {};
@@ -135,9 +135,7 @@ exports.output = function (filename, prj_conf, response) {
 	initProject(prj_conf);
 	var file;
 	if (test_min[prj_path]) {
-		var build_path = prj_conf.build_path;
-		build_path[build_path.length-1]==='/' || (build_path += '/');
-		file = build_path+'min/'+filename.slice(5); //去掉main/xxx.css的main/
+		file = prj_conf.build_path+'min/'+filename.slice(5); //去掉main/xxx.css的main/
 		if (fs.existsSync(file)) {
 			fs.readFile(file, 'binary', function (err, filedata) {
 				if (err) {
@@ -180,7 +178,7 @@ exports.output = function (filename, prj_conf, response) {
 
 //切换测试模式
 exports.testMin = function (prj_conf, response) {
-	prj_path = prj_conf.path; prj_path[prj_path.length-1]==='/' || (prj_path += '/');
+	prj_path = prj_conf.path;
 	test_min[prj_path] = !test_min[prj_path];
 	response.writeHead(200, {'Content-Type':'text/html','Cache-Control':'max-age=0'});
 	response.end(global.HEAD_HTML.replace('{{title}}', '切换测试CSS压缩文件模式')+
@@ -198,7 +196,7 @@ exports.build = function (argv, prj_conf, response) {
 			'<script>' + fs.readFileSync('mok-js/br-build.js','utf8')+'</script>');
 
 	var build_path = prj_conf.build_path;
-	build_path[build_path.length-1]==='/' || (build_path += '/');
+	build_path.slice(-1)==='/' || (build_path += '/');
 	var path_main = build_path+'main/',
 		path_min = build_path+'min/',
 		path_updated = build_path+'updated/',

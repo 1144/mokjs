@@ -5,20 +5,18 @@
 	-p Response response http响应对象
 */
 exports.build = function (argv, prj_conf, response) {
-	var prj_path = prj_conf.path, build_path = prj_conf.build_path;
-	prj_path[prj_path.length-1]==='/' || (prj_path += '/');
-	build_path[build_path.length-1]==='/' || (build_path += '/');
-
 	var boot_js = prj_conf.boot_js,
 		version = argv.v,
 		lazy_mode = argv.hasOwnProperty('lazy'),
 		cmd_spec = prj_conf.modular_spec==='CMD',
 		lazy_list = prj_conf.lazy_list,
 		build_data = prj_conf.build_data || {},
-		charset = prj_conf.charset || 'utf8',
+		charset = prj_conf.charset,
 		comp_cmd = require('../__config').compress_cmd,
 		util = require('../common/util'),
 
+		prj_path = prj_conf.path,
+		build_path = prj_conf.build_path,
 		prj_path_len = prj_path.length,
 		path_main = build_path+'main/',
 		path_min = build_path+'min/',

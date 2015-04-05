@@ -3,3 +3,4 @@
 ) ELSE (
   node "%~dp0\mok" %*
 )
+pause

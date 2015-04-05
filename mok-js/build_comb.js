@@ -57,12 +57,7 @@
 	-p Response response http响应对象
 */
 exports.build = function (argv, prj_conf, response) {
-	var prj_path = prj_conf.path,
-		build_path = prj_conf.build_path;
-	prj_path[prj_path.length-1]==='/' || (prj_path += '/');
-	build_path[build_path.length-1]==='/' || (build_path += '/');
-
-	var charset = prj_conf.charset || 'utf8',
+	var charset = prj_conf.charset,
 		versions = parseVersion(prj_path+'version.info', charset),
 		CURRENT_VER = addOne(versions.LAST_VER), //当前版本号
 		last_file = versions.LAST_FILE,
@@ -72,6 +67,8 @@ exports.build = function (argv, prj_conf, response) {
 		comp_cmd = require('../__config').compress_cmd,
 		util = require('../common/util'),
 
+		prj_path = prj_conf.path,
+		build_path = prj_conf.build_path,
 		prj_path_len = prj_path.length,
 		path_uncompress = build_path+'uncompressed/',
 		path_min = build_path+CURRENT_VER+'/',

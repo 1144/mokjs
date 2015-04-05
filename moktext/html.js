@@ -115,11 +115,11 @@ function combine(file, data, prefile) {
 
 //输出HTML
 exports.output = function (filename, prj_conf, response) {
-	prj_path = prj_conf.path; prj_path[prj_path.length-1]==='/' || (prj_path += '/');
+	prj_path = prj_conf.path;
 	//filename = filename.slice(1);
 	var file = prj_path+filename;
 	if (fs.existsSync(file) && fs.statSync(file).isFile()) {
-		charset = prj_conf.charset || 'utf8';
+		charset = prj_conf.charset;
 		glb_data = prj_conf.data;
 		err_log = [];
 		initCombine();
@@ -145,11 +145,10 @@ exports.output = function (filename, prj_conf, response) {
 //预览某个模块
 exports.viewModule = function (filename, prj_conf, response) {
 	prj_path = prj_conf.path;
-	prj_path[prj_path.length-1]==='/' || (prj_path += '/');
 	filename[0]==='/' && (filename = filename.slice(1));
 	var file = prj_path+filename;
 	if (fs.existsSync(file) && fs.statSync(file).isFile()) {
-		charset = prj_conf.charset || 'utf8';
+		charset = prj_conf.charset;
 		glb_data = prj_conf.data;
 		err_log = [];
 		initCombine();
@@ -183,7 +182,7 @@ exports.viewModule = function (filename, prj_conf, response) {
 //构建项目。argv 构建命令参数，例如 {_prj:'blog', _cmd:'build'}
 exports.build = function (argv, prj_conf, response) {
 	prj_path = prj_conf.path;
-	prj_path[prj_path.length-1]==='/' || (prj_path += '/');
+	prj_path.slice(-1)==='/' || (prj_path += '/');
 	charset = prj_conf.charset || 'utf8';
 	err_log = [];
 	glb_data = prj_conf.build_data || {};
@@ -194,9 +193,9 @@ exports.build = function (argv, prj_conf, response) {
 		}
 	}
 
-	var path_all = prj_conf.build_path,
+	var build_path = prj_conf.build_path,
 		start_time = Date.now();
-	path_all[path_all.length-1]==='/' || (path_all += '/');
+	build_path.slice(-1)==='/' || (build_path += '/');
 
 	//从命令行来
 	response || (response = util.fakeResponse);
@@ -208,7 +207,7 @@ exports.build = function (argv, prj_conf, response) {
 		.replace('{{title}}', '构建HTML文件')+
 		'<script>'+fs.readFileSync('mok-js/br-build.js', 'utf8')+'</script>');
 
-	fs.existsSync(path_all) || fs.mkdirSync(path_all); //不能清空文件夹
+	fs.existsSync(build_path) || fs.mkdirSync(build_path); //不能清空文件夹
 	
 	var k = require.resolve(require('path').resolve(prj_path+'build-list'));
 	var build_list = require(k);
@@ -230,8 +229,8 @@ exports.build = function (argv, prj_conf, response) {
 			'<!-- file tree:\r\n'+file_tree.join('\r\n')+'\r\n- By MOKTEXT. -->';
 		
 		build_list[main_file]===1 || (main_file = build_list[main_file]);
-		util.mkdir(path_all, main_file);
-		fd = fs.openSync(path_all+main_file, 'w', '0666');
+		util.mkdir(build_path, main_file);
+		fd = fs.openSync(build_path+main_file, 'w', '0666');
 		fs.writeSync(fd, fc, 0, charset);
 		fs.closeSync(fd);
 	}

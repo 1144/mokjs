@@ -15,12 +15,14 @@ var url = require('url'),
 	testMin = {}; //项目是否处于测试压缩文件模式
 
 global.HEAD_HTML = fs.readFileSync(__dirname+'/common/head.html', 'utf8');
+fixPrjConf(CONF.projects);
 
 fs.watch(__dirname+'/__config.js', function (eventType) {
 	if (updateConf && eventType==='change') { //防止重复触发
 		require.cache[require.resolve('./__config')] = null;
 		try {
 			CONF = require('./__config');
+			fixPrjConf(CONF.projects);
 			allRoutes = CONF.routes;
 			var t = new Date(),
 				h = t.getHours(), m = t.getMinutes(), s = t.getSeconds();
@@ -58,18 +60,14 @@ function onRequest(request, response, port) {
 					require(prj_conf.type==='css' ? './moktext/css' :
 						'./moktext/html').output(file, prj_conf, response);
 				} else if (testMin[route.project]) {
-					var build_path = prj_conf.build_path;
-					build_path[build_path.length-1]==='/' || (build_path += '/');
 					if (prj_conf.comb_mode) {
 						require('./mok_modules/mok_comb').comb(file, prj_conf, response);
 					} else {
-						outputFile(build_path+'min/'+file, '.js', response);
+						outputFile(prj_conf.build_path+'min/'+file, '.js', response);
 					}
 				} else if (file===prj_conf.boot_js ||
 					(prj_conf.comb_mode && file.slice(3)==='boot.js')) {
-					var src_path = prj_conf.path;
-					src_path[src_path.length-1]==='/' || (src_path += '/');
-					outputFile(src_path+(prj_conf.boot_js||'boot.js'), '.js', response);
+					outputFile(prj_conf.path+(prj_conf.boot_js||'boot.js'), '.js', response);
 				} else {
 					outputJs(file, prj_conf, response);
 				}
@@ -174,6 +172,18 @@ function parseArgv(args) {
 		}
 	}
 	return argv;
+}
+
+//修正项目配置：1、路径后加反斜线；2、默认编码使用utf8
+function fixPrjConf(projects) {
+	var p, conf;
+	for (p in projects) {
+		conf = projects[p];
+		conf.path && conf.path.slice(-1)!=='/' && (conf.path += '/');
+		conf.build_path && conf.build_path.slice(-1)!=='/' && (conf.build_path += '/');
+		conf.charset || (conf.charset = 'utf8');
+	}
+	console.log(projects)
 }
 
 //创建服务器
