@@ -183,7 +183,6 @@ function fixPrjConf(projects) {
 		conf.build_path && conf.build_path.slice(-1)!=='/' && (conf.build_path += '/');
 		conf.charset || (conf.charset = 'utf8');
 	}
-	console.log(projects)
 }
 
 //创建服务器
