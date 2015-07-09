@@ -66,6 +66,7 @@ exports.build = function (argv, prj_conf, response) {
 		build_data = prj_conf.build_data || {},
 		comp_cmd = require('../__config').compress_cmd,
 		util = require('../common/util'),
+		sfs = util.getSfs(charset),
 
 		prj_path = prj_conf.path,
 		build_path = prj_conf.build_path,
@@ -275,14 +276,11 @@ exports.build = function (argv, prj_conf, response) {
 	function compressFiles() {
 		all_depended = Object.keys(all_depended).sort();
 		var i, len = all_depended.length,
-			file, ver, fc, fd, mini;
+			file, ver, fc, mini;
 		if (prj_conf.output_uncompressed) {
 			for (i = 0; i < len; i++) {
 				file = all_depended[i];
-				fd = fs.openSync(path_uncompress+versions[file][0]+'.js',
-					'w', '0666');
-				fs.writeSync(fd, all_files[file], 0, charset);
-				fs.closeSync(fd);
+				sfs.write(path_uncompress+versions[file][0]+'.js', all_files[file]);
 			}
 		}
 		for (i = 0; i < len; ) {
@@ -290,9 +288,7 @@ exports.build = function (argv, prj_conf, response) {
 			ver = versions[file];
 			mini = UglifyJS.minify(all_files[file], {fromString:true});
 			fc = mini.code;
-			fd = fs.openSync(path_min+ver[0]+'.js', 'w', '0666');
-			fs.writeSync(fd, fc, 0, charset);
-			fs.closeSync(fd);
+			sfs.write(path_min+ver[0]+'.js', fc);
 			fc = crypto.createHash('md5').update(fc).digest('hex').slice(0, 8);
 			if (ver[2]) {
 				fc===ver[2] || (ver[1] = CURRENT_VER, ver[2] = fc, ver.push('updated'));
@@ -306,7 +302,7 @@ exports.build = function (argv, prj_conf, response) {
 	}
 	//把版本信息、main文件依赖信息写入启动文件
 	function updateBoot() {
-		var fc, fd;
+		var fc;
 		//在本次版本目录下创建_boot.js文件
 		fc = all_files['boot.js'];
 		if (!fc) {
@@ -317,15 +313,12 @@ exports.build = function (argv, prj_conf, response) {
 			versions['mok'][1]+version_fc+'".split(",");')
 			.replace('//<MAINFILES/>', 'var mainFiles={'+main_file_dl.join(',')+'};');
 		fc = UglifyJS.minify(fc, {fromString:true});
-		fd = fs.openSync(path_min+'_boot.js', 'w', '0666');
-		fs.writeSync(fd, fc.code, 0, charset);
-		fs.closeSync(fd);
+		sfs.write(path_min+'_boot.js', fc.code);
 
 		//在项目根目录创建更新的version.info文件
-		fd = fs.openSync(prj_path+'version-'+CURRENT_VER+'.info', 'w', '0666');
-		fs.writeSync(fd, 'LAST_VER:'+CURRENT_VER+'\r\nLAST_FILE:'+last_file+
-			'\r\n-'+all_depended.join('\r\n-')+'\r\n', 0, charset);
-		fs.closeSync(fd);
+		sfs.write(prj_path+'version-'+CURRENT_VER+'.info',
+			'LAST_VER:'+CURRENT_VER+'\r\nLAST_FILE:'+last_file+
+			'\r\n-'+all_depended.join('\r\n-')+'\r\n');
 	}
 	//构建完成
 	function buildDone() {
@@ -333,10 +326,10 @@ exports.build = function (argv, prj_conf, response) {
 			for (var ei = 0; ei < err_log.length; ei++) {
 				response.write('<br/><br/>'+err_log[ei]);
 			}
-			response.end('<br/><br/>====== 囧，构建项目失败了 TAT...<br/></body></html>');
+			response.end('<br/><br/>囧，构建项目失败了 TAT...<br/></body></html>');
 			return;
 		}
-		response.end('<br/><br/>========= 构建项目成功！<br/>========= 总共用时：'+
+		response.end('<br/><br/>=== 构建项目成功！===<br/>总共用时：'+
 			(Date.now()-start_time)/1000+' s.'+util.buildTime()+'<br/><br/></body></html>');
 		prj_conf.__hasbuilt = true;
 		prj_conf.__version = CURRENT_VER;
@@ -355,10 +348,10 @@ exports.build = function (argv, prj_conf, response) {
 		'#pn{margin-left:6px;height:20px;display:inline-block;}</style>'+
 		'<script>function updatePG(i,len){pg.style.width=Math.ceil(i*100/len)+"%";'+
 		'pn.innerHTML=""+i+"/"+len;}</script>');
-	response.write('=== 正在分析每个文件的依赖 ...');
+	response.write('正在分析每个文件的依赖 ...');
 		readAllFiles(prj_path.slice(0, -1), all_files);
 		parseReq();
-	response.write('<br/>=== 分析完毕。');
+	response.write('<br/>分析完毕。');
 
 	if (err_log.length) {
 		buildDone();
@@ -366,11 +359,11 @@ exports.build = function (argv, prj_conf, response) {
 	}
 
 	calcMainfileDL();
-	response.write('<br/><br/>====== 正在复制和压缩所有被依赖的文件 ...');
+	response.write('<br/><br/>正在复制和压缩所有被依赖的文件 ...');
 	response.write('<br/><div class="pg-wrap"><div id="pg"></div></div><div id="pn">0/0</div>');
 	response.write('<script>var pg=document.getElementById("pg"), pn=document.getElementById("pn");</script>');
 	compressFiles();
-	response.write('<br/>====== 复制和压缩完毕。');
+	response.write('<br/>复制和压缩完毕。');
 	updateBoot();
 	buildDone();
 

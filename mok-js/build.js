@@ -1,19 +1,18 @@
 /*--
 	构建JS项目（合并压缩）
-	-p obj argv 构建命令参数，例如 {_prj:'blog', _cmd:'build', v:'2', lazy:'lazy'}
+	-p obj argv 构建命令参数，例如 {_prj:'blog', _cmd:'build', v:'2'}
 	-p obj prj_conf 项目配置
 	-p Response response http响应对象
 */
 exports.build = function (argv, prj_conf, response) {
 	var boot_js = prj_conf.boot_js,
 		version = argv.v,
-		lazy_mode = argv.hasOwnProperty('lazy'),
 		cmd_spec = prj_conf.modular_spec==='CMD',
-		lazy_list = prj_conf.lazy_list,
 		build_data = prj_conf.build_data || {},
 		charset = prj_conf.charset,
 		comp_cmd = require('../__config').compress_cmd,
 		util = require('../common/util'),
+		sfs = util.getSfs(charset),
 
 		prj_path = prj_conf.path,
 		build_path = prj_conf.build_path,
@@ -32,7 +31,6 @@ exports.build = function (argv, prj_conf, response) {
 		fs = require('fs'),
 		child_process = require('child_process'),
 		crypto = require('crypto'),
-		zip = argv.hasOwnProperty('zip'),
 
 		err_log = [], //收集编译错误信息
 		br_mok = fs.readFileSync('mok-js/br-mok-'+
@@ -60,7 +58,7 @@ exports.build = function (argv, prj_conf, response) {
 		fs.existsSync(path_min) ? util.cleardir(path_min) : fs.mkdirSync(path_min);
 		fs.existsSync(path_updated) || fs.mkdirSync(path_updated);
 	}
-	//初始化：读取版本信息，初始化zip
+	//初始化：读取版本信息
 	function init() {
 		if (prj_conf.format_tag) {
 			var ret = prj_conf.format_tag(version);
@@ -94,26 +92,6 @@ exports.build = function (argv, prj_conf, response) {
 					abc_name2ver[vs[1]+'.js'] = vs[3];
 				}
 			}
-		}
-		//需要生成zip
-		if (zip) {
-			try {zip = require('archiver')} catch (e) {zip = false}
-		}
-		//并且有zip模块
-		if (zip) {
-			//生成压缩文档
-			zip = zip('zip');
-			zip.on('error', function(err){
-				err_log.push('<br/>MOKJS-701: 生成zip压缩包的过程中出现异常！'+
-					'<br/>错误信息：'+err.toString());
-			});
-			zip.pipe(fs.createWriteStream(path_tag.slice(0, -1)+'.zip') );
-		} else {
-			//构造伪zip对象
-			zip = {
-				append: function () {},
-				finalize: function (callback) {callback()}
-			};
 		}
 	}
 	//分析依赖：采用CMD规范
@@ -151,7 +129,7 @@ exports.build = function (argv, prj_conf, response) {
 	function parseRequire(file) {
 		var file_content = [];
 		file_content.push('\r\n/* ===== '+file+' ===== */\r\n'+
-			'mok["' + util.getModuleAbbr(file.slice(0, -3)) +
+			'mok["'+ util.getModuleAbbr(file.slice(0, -3)) +
 			'"]=function(require, module, exports){');
 
 		var lines = all_files[file].split('\n'),
@@ -218,7 +196,7 @@ exports.build = function (argv, prj_conf, response) {
 	}
 	//更新启动文件里的JS文件版本信息
 	function updateAbcFile() {
-		var content = '<version> */', fd, k;
+		var content = '<version> */';
 		abc_allname.sort().forEach(function (name) {
 			if (abc_name2ver[name]) {
 				content += '\r\n"'+name.slice(0, -3)+'": "'+abc_name2ver[name]+'",';
@@ -234,49 +212,36 @@ exports.build = function (argv, prj_conf, response) {
 				}
 				delete abc_name2ver[name];
 				//复制有变化的文件
-				k = fs.readFileSync(path_min+name, charset);
-				fd = fs.openSync(path_tag+name, 'w', '0666');
-				fs.writeSync(fd, k, 0, charset);
-				fs.closeSync(fd);
-				zip.append(k, {name:name});
+				sfs.copy(path_min+name, path_tag+name);
 			}
 		});
-		k = '';
+		var deleted = [], k;
 		for (k in abc_name2ver) {
 			content += '\r\n/*"'+k.slice(0, -3)+'": "'+abc_name2ver[k]+'", del*/';
+			deleted.push(k);
 		}
 		content = abc_a+content+'\r\n/* </version>'+abc_c;
-		fd = fs.openSync(path_tag+boot_js, 'w', '0666');
-		fs.writeSync(fd, content, 0, charset);
-		fs.closeSync(fd);
-		fd = fs.openSync(path_min+boot_js, 'w', '0666'); //复制boot_js文件到min目录下
-		fs.writeSync(fd, content, 0, charset);
-		fs.closeSync(fd);
+		sfs.write(path_tag+boot_js, content);
+		sfs.write(path_min+boot_js, content); //复制boot_js文件到min目录下
 		//复制abc.js文件到打包项目的目录下，命名为update-abc.js，
 		//提交SVN时先删除已有的abc.js，
 		//再把update-abc.js重命名为abc.js，即实现更新abc.js
-		fd = fs.openSync(prj_path+'updated-'+boot_js, 'w', '0666');
-		fs.writeSync(fd, content, 0, charset);
-		fs.closeSync(fd);
-		zip.append(content, {name:boot_js});
+		sfs.write(prj_path+'updated-'+boot_js, content);
 		
-		k && response.write('<br/>MOKJS-051: 请注意有main文件被删除了：'+k+' 等。');
+		deleted.length &&
+			response.write('<br/>MOKJS-051: 有main文件被删除了：'+deleted.join(', '));
 	}
 	//构建完成
 	function buildDone() {
 		boot_js && err_log.length===0 && updateAbcFile();
-		zip.finalize(function (err) {
-			err && err_log.push('<br/>MOKJS-702: 生成zip压缩包失败！<br/>错误信息：'+
-				err.toString());
-		});
 		if (err_log.length) {
 			for (var ei = 0; ei < err_log.length; ei++) {
 				response.write('<br/><br/>'+err_log[ei]);
 			}
-			response.end('<br/><br/>====== 囧，合并压缩失败了 TAT...<br/></body></html>');
+			response.end('<br/><br/>囧，合并压缩失败了 TAT...<br/></body></html>');
 			return;
 		}
-		response.end('<br/><br/>========= 合并压缩成功！<br/>========= 总共用时：'+
+		response.end('<br/><br/>=== 合并压缩成功！===<br/>总共用时：'+
 			(Date.now()-start_time)/1000 +' s.'+util.buildTime()+
 			'<br/><br/></body></html>');
 		prj_conf.__hasbuilt = true;
@@ -301,10 +266,7 @@ exports.build = function (argv, prj_conf, response) {
 					abc_name2ver[file] = abc_newverstr+file_md5;
 				}
 			} else if (path_tag) {
-				var fd = fs.openSync(path_tag+file, 'w', '0666');
-				fs.writeSync(fd, fc, 0, charset);
-				fs.closeSync(fd);
-				zip.append(fc, {name:file});
+				sfs.write(path_tag+file, fc);
 			}
 			if (++main_count===main_len) {	//这才算整个打包过程完成哟
 				buildDone();
@@ -348,14 +310,10 @@ exports.build = function (argv, prj_conf, response) {
 		var i = 0, j, main_file;
 		for (; i < main_len; i++) {
 			main_file = main_files[i];
-			response.write('<br/>====== 正在合并和压缩文件 '+main_file+
+			response.write('<br/>=== 正在合并和压缩文件 '+main_file+
 				' 　--- '+(main_len - i));
-			main_len-i===1 && response.write('<br/>====== 正在努力压缩ing ...');
+			main_len-i===1 && response.write('<br/>正在努力压缩ing ...');
 			abc_allname.push(main_file);
-			if (lazy_mode && lazy_list[main_file]) { //在惰性打包列表
-				main_count++;
-				continue;
-			}
 			calcing = {};
 			depended = {};
 			depended_list = [];
@@ -380,7 +338,7 @@ exports.build = function (argv, prj_conf, response) {
 				position += fs.writeSync(fd, '\r\n'+all_files[depended_list[j]],
 					position, charset);
 			}
-			fs.writeSync(fd, '\r\nrequire("'+main_file.slice(0, -3)+'");\r\n',
+			fs.writeSync(fd, '\r\nrequire("main/'+main_file.slice(0, -3)+'");\r\n',
 				position, charset);
 			fs.closeSync(fd);
 			
@@ -398,10 +356,10 @@ exports.build = function (argv, prj_conf, response) {
 	response.writeHead(200, {'Content-Type':'text/html'});
 	response.write(global.HEAD_HTML.replace('{{title}}', '合并压缩JS文件')+
 		'<script>'+fs.readFileSync('mok-js/br-build.js', 'utf8')+'</script>');
-	response.write('=== 正在分析文件依赖 ...');
+	response.write('正在分析文件依赖 ...');
 		readAllFiles(prj_path.slice(0, -1), all_files);
 		parseReq();
-	response.write('<br/>=== 分析完毕。');
+	response.write('<br/>分析完毕。');
 
 	err_log.length ? buildDone() : combineAndCompress();
 

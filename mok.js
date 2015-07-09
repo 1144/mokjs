@@ -31,19 +31,19 @@ fs.watch(__dirname+'/__config.js', function (eventType) {
 		} catch (e) {
 			console.log('MOKJS-101: 配置文件语法错误！\n'+e);
 		}
-		//console.log('__config.js changed');
 		updateConf = false;
 		setTimeout(function(){updateConf = true}, 200);
 	}
 });
 
-function onRequest(request, response, port) {
+function onRequest(request, response) {
 	var req_path = url.parse(request.url).pathname; //pathname不包括参数
-	if (req_path[1]==='-' ){
+	if (req_path[1]==='-') {
 		execCmd(req_path, request, response); //mokjs命令以/-开头
 		return;
 	}
-	var host = request.headers.host;
+	var host = request.$host || request.headers.host,
+		port = request.$port;
 	port==='80' || host.indexOf(':')>0 || (host += ':'+port);
 	var routes = allRoutes[host] || [],
 		i, len = routes.length,
@@ -72,9 +72,14 @@ function onRequest(request, response, port) {
 					outputJs(file, prj_conf, response);
 				}
 			} else {
-				route.locate ? outputFile(route.locate(match),
-					path.extname(req_path).toLowerCase(), response) :
-					route.handler(match, request, response, req_path);
+				if (route.locate) {
+					outputFile(route.locate(match), 
+						path.extname(req_path).toLowerCase(), response);
+				} else if (route.handler) {
+					route.handler(match, request, response, onRequest);
+				} else {
+					route.root && staticServe(match, request, response, route);
+				}
 			}
 			return;
 		}
@@ -158,6 +163,44 @@ function outputFile(file, file_ext, response) {
 	}
 }
 
+function staticServe(match, request, response, route) {
+	var root = route.root;
+	if (fs.existsSync(root)) {
+		var filename = decodeURI(route.format ? route.format(match) : match[1] || match[0]);
+		filename[0]==='/' && (filename = filename.slice(1));
+		var file = root.slice(-1)==='/' ? root+filename : root+'/'+filename;
+		//console.log(root, file);
+		if (fs.existsSync(file)) {
+			if (fs.statSync(file).isFile()) { //file
+				response.writeHead(200, {
+					'Cache-Control': 'no-cache,max-age=0',
+					'Content-Type': MIME[path.extname(filename).toLowerCase()] || 'unknown'
+				});
+				fs.createReadStream(file).pipe(response);
+			} else { //directory
+				response.writeHead(200, {
+					'Cache-Control': 'no-cache,max-age=0',
+					'Content-Type': 'text/html'
+				});
+				response.write(global.HEAD_HTML.replace('{{title}}', '浏览目录 '+file));
+				var dir = filename.slice(-1)==='/' ? filename.slice(0, -1) : filename;
+				if (dir) {
+					response.write('<a href="/'+dir.slice(0, dir.lastIndexOf('/')+1)+
+						'">返回上一级</a><hr/>');
+					dir += '/';
+				}
+				fs.readdirSync(file).forEach(function (f) {
+					response.write('<a href="/'+dir+f+'">'+f+'</a><br/>');
+				});
+				response.end('</body></html>');
+			}
+			return;
+		}
+	}
+	response.writeHead(404, {'Content-Type':'text/plain'});
+	response.end('MOKJS-404: Not found. Wrong path ['+file+'].');
+}
+
 //解析命令参数
 function parseArgv(args) {
 	var i = args.length, j, arg,
@@ -203,7 +246,8 @@ function fixPrjConf(projects) {
 				~function (port) {
 					//！注意，端口被占用时，会抛出异常：Error: listen EADDRINUSE
 					http.createServer(function (request, response) {
-						onRequest(request, response, port);
+						request.$port = port;
+						onRequest(request, response);
 					}).listen(port);
 				}(x);
 			}
@@ -219,11 +263,24 @@ function fixPrjConf(projects) {
 			routes[x] = null;
 		}
 	}
+	if (CONF.https_routes) {
+		ports.push('443(https)');
+		for (x in CONF.https_routes){
+			routes[x] = CONF.https_routes[x];
+		}
+		require('https').createServer({
+			key: fs.readFileSync('./common/ssl/privatekey.pem'),
+			cert: fs.readFileSync('./common/ssl/certificate.pem')
+		}, function (request, response) {
+			request.$port = '80';
+			onRequest(request, response);
+		}).listen(443);
+	}
 	console.log('\033[1m\033[32mMOKJS is running at this host, listening on port(s): '+
 		ports.join(', ')+'.\033[0m');
 }(allRoutes, ':'+CONF.http_port);
 
-CONF.proxy_conf && require('./mok_modules/mok_proxy').main(CONF.proxy_conf);
+CONF.proxy_conf && require('./mok_modules/mok_proxy').start(CONF.proxy_conf);
 
 process.on('uncaughtException', function (ex) { //捕获漏网的异常
 	console.error('\nMOKJS Uncaught Exception: '+ex.stack);

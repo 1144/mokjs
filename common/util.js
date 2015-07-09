@@ -180,3 +180,22 @@ exports.parseRequire = function (line, srcfile) {
 	}
 	return [r, ms];
 };
+
+var Sfs = function (charset) {
+	this.charset = charset || 'utf8';
+};
+Sfs.prototype = {
+	write: function (file, fc) {
+		var fd = fs.openSync(file, 'w', '0666');
+		fs.writeSync(fd, fc, 0, this.charset);
+		fs.closeSync(fd);
+	},
+	copy: function (src, dest) {
+		var fd = fs.openSync(dest, 'w', '0666');
+		fs.writeSync(fd, fs.readFileSync(src, this.charset), 0, this.charset);
+		fs.closeSync(fd);
+	}
+};
+exports.getSfs = function (charset) {
+	return new Sfs(charset);
+};

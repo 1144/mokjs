@@ -5,7 +5,7 @@
 var fs = require('fs'),
 	crypto = require('crypto'),
 	util = require('../common/util'),
-	reg_data_key = /\/\*{{(\w+)}}\*\//g,
+	reg_data_key = /{{(.*?)}}/g,
 	reg_comment = /\/\*[\D\d]*?\*\//g, //注释，例如：/* CSS Document */
 	reg_scs = /[;:{, }]/, //前后可能出现空白字符的符号
 	//@import url('../modules/title.css');
@@ -26,10 +26,14 @@ var fs = require('fs'),
 
 //编译sass文件
 function compileSassFile(file_content, file) {
-	sass_config.data = file_content;
+	var config = {}, k;
+	for (k in sass_config) {
+		config[k] = sass_config[k];
+	}
+	config.data = file_content;
 	try {
 		sass || (sass = require('node-sass'));
-		return sass.renderSync(sass_config);
+		return sass.renderSync(config).css.toString(charset);
 	} catch (err) {
 		err_log.push('MOKTEXT-006: 编译sass文件 '+file+' 出错：'+err.toString());
 		return '';
@@ -84,7 +88,7 @@ function combine(file) {
 			} else {
 				if (fs.existsSync(prj_path+import_file) &&
 					fs.statSync(prj_path+import_file).isFile() ){
-					combine(import_file)
+					combine(import_file);
 				} else {
 					err_log.push('MOKTEXT-005: '+file+
 						' 引用的文件 '+import_file+' 不存在！');

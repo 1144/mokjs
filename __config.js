@@ -95,6 +95,7 @@ var routes = {
 		},
 		{
 			regexp: /.*/,	//不满足前面格式的其他任何请求，直接定位到资源位置
+			//其实这里也可以用静态目录的方式配置，即：root: '../demos/blog/static'
 			locate: function (match) {
 				//返回相对于__config.js这个文件的路径，也可用绝对路径
 				//return 'D:/1144/demos/blog/static' + match[0];
@@ -128,10 +129,7 @@ var routes = {
 	's.m.com': [	//图片、CSS和JS资源
 		{
 			regexp: /.*/,
-			locate: function (match) {
-				//不需要动态处理的资源，直接定位到资源位置
-				return '../demos/www'+match[0];
-			}
+			root: '../demos/www'    //静态资源目录
 		}
 	],
 	'count.cn': [
@@ -171,7 +169,7 @@ exports.compress_cmd = 'uglifyjs {filename} -m -c unused=true -o {filename}';
 		'ecom.com': [
 			{
 				regexp: /b\.html/,
-				head: function (header, match) {
+				replace: function (header, match) {
 					return {
 						host: 'm.com',
 						path: '/start.html'
