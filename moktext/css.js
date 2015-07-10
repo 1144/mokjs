@@ -5,7 +5,7 @@
 var fs = require('fs'),
 	crypto = require('crypto'),
 	util = require('../common/util'),
-	reg_data_key = /{{(.*?)}}/g,
+	reg_data_key = /{{([\w\$]*)}}/g,
 	reg_comment = /\/\*[\D\d]*?\*\//g, //注释，例如：/* CSS Document */
 	reg_scs = /[;:{, }]/, //前后可能出现空白字符的符号
 	//@import url('../modules/title.css');
