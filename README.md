@@ -11,3 +11,5 @@ JS/CSS/HTML模块化开发，web服务器，代理服务器，前端开发工具
 ## 版本发布记录
 
 请看 [CHANGELOG.md](https://github.com/1144/mokjs/blob/master/CHANGELOG.md)
+
+tests
